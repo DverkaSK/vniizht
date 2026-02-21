@@ -1,0 +1,21 @@
+# IDE
+.idea/
+
+# Claude local settings
+.claude/
+
+# Go binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go test binaries
+*.test
+
+# Go coverage
+*.out
+
+# Go build cache
+/vendor/
