@@ -50,6 +50,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Установка имени образа в нижнем регистре
+        run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]'):latest" >> $GITHUB_ENV
+
       - name: Авторизация в GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -62,7 +65,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/vniizht:latest
+          tags: ${{ env.IMAGE_NAME }}
 
       - name: Деплой бэкенда на сервер
         uses: appleboy/ssh-action@v1
@@ -71,7 +74,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            docker pull ghcr.io/${{ github.repository_owner }}/vniizht:latest
+            mkdir -p ~/vniizht
+            docker pull ${{ env.IMAGE_NAME }}
             cd ~/vniizht
             docker compose up -d app
 
@@ -94,17 +98,23 @@ jobs:
           npm ci
           npm run build
 
-      - uses: webfactory/ssh-agent@v0.9.0
+      - name: Создание директории на сервере
+        uses: appleboy/ssh-action@v1
         with:
-          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: mkdir -p ~/vniizht/frontend/dist
 
       - name: Деплой фронтенда на сервер
-        run: |
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p ~/vniizht/frontend/dist"
-          rsync -az --delete \
-            frontend/dist/ \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/vniizht/frontend/dist/
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "frontend/dist/"
+          target: "~/vniizht/frontend/"
+          strip_components: 1
 
   deploy-nginx:
     needs: detect-changes
@@ -113,17 +123,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: webfactory/ssh-agent@v0.9.0
+      - name: Копирование конфигурации Nginx на сервер
+        uses: appleboy/scp-action@v0.1.7
         with:
-          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
-
-      - name: Обновление конфигурации Nginx
-        run: |
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p ~/vniizht"
-          rsync -az \
-            nginx.conf \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/vniizht/nginx.conf
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "nginx.conf"
+          target: "~/vniizht/"
 
       - name: Перезагрузка Nginx
         uses: appleboy/ssh-action@v1
@@ -142,14 +149,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
-
       - name: Синхронизация docker-compose.yml на сервер
-        run: |
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p ~/vniizht"
-          rsync -az \
-            docker-compose.yml \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/vniizht/docker-compose.yml
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: "~/vniizht/"
