@@ -12,6 +12,7 @@ services:
     restart: unless-stopped
 
   app:
+    image: ghcr.io/dverkask/vniizht:latest
     build:
       context: .
       dockerfile: Dockerfile
