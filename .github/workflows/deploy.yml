@@ -1,0 +1,101 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      nginx: ${{ steps.filter.outputs.nginx }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'cmd/**'
+              - 'internal/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'vendor/**'
+              - 'Dockerfile'
+            frontend:
+              - 'frontend/src/**'
+              - 'frontend/public/**'
+              - 'frontend/index.html'
+              - 'frontend/package.json'
+              - 'frontend/package-lock.json'
+              - 'frontend/vite.config.ts'
+              - 'frontend/tailwind.config.js'
+              - 'frontend/postcss.config.js'
+            nginx:
+              - 'nginx.conf'
+
+  deploy-backend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Пересборка и перезапуск бэкенда
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd ~/vniizht
+            git pull origin develop
+            docker compose up -d --build app
+
+  deploy-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Сборка фронтенда
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Деплой фронтенда на сервер
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            frontend/dist/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/vniizht/frontend/dist/
+
+  deploy-nginx:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.nginx == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Обновление конфигурации Nginx
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd ~/vniizht
+            git pull origin develop
+            docker compose exec -T nginx nginx -s reload
