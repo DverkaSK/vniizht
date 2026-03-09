@@ -81,7 +81,7 @@ jobs:
             mkdir -p ~/vniizht
             docker pull ${{ env.IMAGE_NAME }}
             cd ~/vniizht
-            docker compose up -d app
+            docker compose up -d --no-build app
 
   deploy-frontend:
     needs: detect-changes
