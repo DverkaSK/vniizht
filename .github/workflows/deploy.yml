@@ -100,6 +100,7 @@ jobs:
       - name: Деплой фронтенда на сервер
         run: |
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p ~/vniizht/frontend/dist"
           rsync -az --delete \
             frontend/dist/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/vniizht/frontend/dist/
@@ -118,6 +119,7 @@ jobs:
       - name: Обновление конфигурации Nginx
         run: |
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p ~/vniizht"
           rsync -az \
             nginx.conf \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/vniizht/nginx.conf
@@ -146,6 +148,7 @@ jobs:
       - name: Синхронизация docker-compose.yml на сервер
         run: |
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p ~/vniizht"
           rsync -az \
             docker-compose.yml \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/vniizht/docker-compose.yml
