@@ -76,6 +76,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
           script: |
             mkdir -p ~/vniizht
             docker pull ${{ env.IMAGE_NAME }}
@@ -107,6 +108,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
           script: mkdir -p ~/vniizht/frontend/dist
 
       - name: Деплой фронтенда на сервер
@@ -115,6 +117,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
           source: "frontend/dist/"
           target: "~/vniizht/frontend/"
           strip_components: 1
@@ -132,6 +135,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
           source: "nginx.conf"
           target: "~/vniizht/"
 
@@ -141,6 +145,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
           script: |
             cd ~/vniizht
             docker compose exec -T nginx nginx -s reload
@@ -158,5 +163,6 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
           source: "docker-compose.yml"
           target: "~/vniizht/"
