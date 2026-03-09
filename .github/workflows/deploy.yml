@@ -72,14 +72,20 @@ jobs:
 
       - name: Деплой бэкенда на сервер
         uses: appleboy/ssh-action@v1
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE_NAME
           script: |
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             mkdir -p ~/vniizht
-            docker pull ${{ env.IMAGE_NAME }}
+            docker pull $IMAGE_NAME
             cd ~/vniizht
             docker compose up -d --no-build app
 
