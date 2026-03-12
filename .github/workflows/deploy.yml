@@ -1,0 +1,174 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      nginx: ${{ steps.filter.outputs.nginx }}
+      compose: ${{ steps.filter.outputs.compose }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'cmd/**'
+              - 'internal/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'vendor/**'
+              - 'Dockerfile'
+            frontend:
+              - 'frontend/src/**'
+              - 'frontend/public/**'
+              - 'frontend/index.html'
+              - 'frontend/package.json'
+              - 'frontend/package-lock.json'
+              - 'frontend/vite.config.ts'
+              - 'frontend/tailwind.config.js'
+              - 'frontend/postcss.config.js'
+            nginx:
+              - 'nginx.conf'
+            compose:
+              - 'docker-compose.yml'
+
+  build-and-deploy-backend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Установка имени образа в нижнем регистре
+        run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]'):latest" >> $GITHUB_ENV
+
+      - name: Авторизация в GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Сборка и публикация образа бэкенда
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_NAME }}
+
+      - name: Деплой бэкенда на сервер
+        uses: appleboy/ssh-action@v1
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE_NAME
+          script: |
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            mkdir -p ~/vniizht
+            docker pull $IMAGE_NAME
+            cd ~/vniizht
+            docker compose up -d --no-build app
+
+  deploy-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Сборка фронтенда
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Создание директории на сервере
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: mkdir -p ~/vniizht/frontend/dist
+
+      - name: Деплой фронтенда на сервер
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          source: "frontend/dist/"
+          target: "~/vniizht/frontend/"
+          strip_components: 1
+
+  deploy-nginx:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.nginx == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Копирование конфигурации Nginx на сервер
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          source: "nginx.conf"
+          target: "~/vniizht/"
+
+      - name: Перезагрузка Nginx
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            cd ~/vniizht
+            docker compose exec -T nginx nginx -s reload
+
+  sync-compose:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.compose == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Синхронизация docker-compose.yml на сервер
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          source: "docker-compose.yml"
+          target: "~/vniizht/"
