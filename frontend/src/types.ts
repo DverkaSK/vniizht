@@ -1,6 +1,6 @@
-export type Role = 'guest' | 'user' | 'specialist' | 'admin'
-export type QuestionStatus = 'open' | 'closed' | 'duplicate'
-export type VoteValue = 'up' | 'down'
+export type Role = 'GUEST' | 'USER' | 'SPECIALIST' | 'ADMIN'
+export type QuestionStatus = 'OPEN' | 'CLOSED' | 'DUPLICATE'
+export type VoteValue = 'UP' | 'DOWN'
 
 export interface User {
   id: number

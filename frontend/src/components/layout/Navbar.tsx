@@ -82,7 +82,7 @@ export function Navbar() {
                       <div className="absolute right-0 top-full mt-1 z-40 w-48 rounded-md border border-border bg-background shadow-lg py-1">
                         <div className="px-3 py-2 border-b border-border">
                           <p className="text-sm font-medium">{user.username}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{user.role.toLowerCase()}</p>
                         </div>
                         <Link
                           to={`/users/${user.id}`}

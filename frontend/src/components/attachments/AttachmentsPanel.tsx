@@ -41,8 +41,8 @@ export function AttachmentsPanel({ targetType, targetId, uploaderIdAllowed }: Pr
 
   const canUpload = user && (
     user.id === uploaderIdAllowed ||
-    user.role === 'admin' ||
-    user.role === 'specialist'
+    user.role === 'ADMIN' ||
+    user.role === 'SPECIALIST'
   )
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,7 +77,7 @@ export function AttachmentsPanel({ targetType, targetId, uploaderIdAllowed }: Pr
   }
 
   const canDelete = (att: Attachment) =>
-    user && (att.uploader_id === user.id || user.role === 'admin' || user.role === 'specialist')
+    user && (att.uploader_id === user.id || user.role === 'ADMIN' || user.role === 'SPECIALIST')
 
   const isImage = (mime: string) => mime.startsWith('image/')
 

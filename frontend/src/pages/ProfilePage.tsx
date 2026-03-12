@@ -98,7 +98,7 @@ export function ProfilePage() {
             </div>
           </div>
 
-          {user.role === 'specialist' && (
+          {user.role === 'SPECIALIST' && (
             <div className="rounded-lg border border-green-200 bg-green-50/50 p-4">
               <div className="flex items-center gap-1.5 text-green-700 font-medium text-sm mb-1">
                 <CheckCircle2 className="h-4 w-4" />

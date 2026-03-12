@@ -23,15 +23,15 @@ import { formatRelative } from '@/lib/utils'
 import type { Answer, Comment, Question, User, VoteValue } from '@/types'
 
 const statusLabel: Record<string, string> = {
-  open: 'Открыт',
-  closed: 'Закрыт',
-  duplicate: 'Дубликат',
+  OPEN: 'Открыт',
+  CLOSED: 'Закрыт',
+  DUPLICATE: 'Дубликат',
 }
 
 const statusVariant: Record<string, 'status-open' | 'status-progress' | 'status-closed'> = {
-  open: 'status-open',
-  closed: 'status-closed',
-  duplicate: 'status-closed',
+  OPEN: 'status-open',
+  CLOSED: 'status-closed',
+  DUPLICATE: 'status-closed',
 }
 
 type AnswerWithComments = Answer & { comments: Comment[] }
@@ -165,9 +165,9 @@ function AnswerBlock({
               type="button"
               aria-label="Голос вверх"
               disabled={voteBlocked}
-              onClick={() => onVote(answer, 'up')}
+              onClick={() => onVote(answer, 'UP')}
               className={`rounded-md p-1.5 transition-colors ${
-                answer.current_user_vote === 'up'
+                answer.current_user_vote === 'UP'
                   ? 'bg-green-50 text-green-600'
                   : voteBlocked
                     ? 'text-muted-foreground/50'
@@ -185,9 +185,9 @@ function AnswerBlock({
               type="button"
               aria-label="Голос вниз"
               disabled={voteBlocked}
-              onClick={() => onVote(answer, 'down')}
+              onClick={() => onVote(answer, 'DOWN')}
               className={`rounded-md p-1.5 transition-colors ${
-                answer.current_user_vote === 'down'
+                answer.current_user_vote === 'DOWN'
                   ? 'bg-red-50 text-red-500'
                   : voteBlocked
                     ? 'text-muted-foreground/50'
@@ -270,7 +270,7 @@ export function QuestionPage() {
   const [votePendingId, setVotePendingId] = useState<number | null>(null)
   const [verifyPendingId, setVerifyPendingId] = useState<number | null>(null)
 
-  const canVerifyAnswers = user?.role === 'specialist' || user?.role === 'admin'
+  const canVerifyAnswers = user?.role === 'SPECIALIST' || user?.role === 'ADMIN'
 
   const loadPage = async (questionId: number) => {
     const [loadedQuestion, loadedAnswers] = await Promise.all([
@@ -430,7 +430,7 @@ export function QuestionPage() {
         </div>
       </div>
 
-      {user && question.status === 'open' && (
+      {user && question.status === 'OPEN' && (
         <div className="rounded-lg border border-border bg-background p-5">
           <h3 className="mb-3 text-base font-semibold">Ваш ответ</h3>
           <div className="flex gap-3">
