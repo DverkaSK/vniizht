@@ -48,6 +48,13 @@ func (s *QuestionService) Update(ctx context.Context, id int64, user *model.User
 	return nil
 }
 
-func (s *QuestionService) Close(ctx context.Context, id, userID int64) error {
-	return s.repo.Close(ctx, id, userID)
+func (s *QuestionService) Close(ctx context.Context, id int64, user *model.User) error {
+	existing, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if existing.AuthorID != user.ID && user.Role != model.RoleAdmin && user.Role != model.RoleSpecialist {
+		return errs.ErrForbidden
+	}
+	return s.repo.Close(ctx, id)
 }

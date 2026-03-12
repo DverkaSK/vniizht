@@ -46,7 +46,7 @@ const (
 	QuestionClose = `
 		UPDATE questions
 		SET status = 'CLOSED', updated_at = NOW()
-		WHERE id = $1 AND author_id = $2 AND status = 'OPEN'`
+		WHERE id = $1 AND status = 'OPEN'`
 
 	QuestionTagsGet = `
 		SELECT t.id, t.name, t.created_at

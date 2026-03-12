@@ -161,8 +161,8 @@ func (h *QuestionsHandler) Close(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.Close(r.Context(), id, user.ID); err != nil {
-		mapErr(w, err, errs.QuestionNotFound, "", "", errs.QuestionCloseError)
+	if err := h.svc.Close(r.Context(), id, user); err != nil {
+		mapErr(w, err, errs.QuestionNotFound, errs.QuestionForbidden, "", errs.QuestionCloseError)
 		return
 	}
 

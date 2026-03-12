@@ -142,8 +142,8 @@ func (r *QuestionRepo) Update(ctx context.Context, q *model.Question, tagIDs []i
 	return tx.Commit(ctx)
 }
 
-func (r *QuestionRepo) Close(ctx context.Context, id, authorID int64) error {
-	tag, err := r.db.Exec(ctx, queries.QuestionClose, id, authorID)
+func (r *QuestionRepo) Close(ctx context.Context, id int64) error {
+	tag, err := r.db.Exec(ctx, queries.QuestionClose, id)
 	if err != nil {
 		return fmt.Errorf("close question: %w", err)
 	}

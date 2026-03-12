@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
 
 import {
+  closeQuestion,
   createAnswer,
   createAnswerVote,
   createComment,
@@ -271,6 +272,11 @@ export function QuestionPage() {
   const [verifyPendingId, setVerifyPendingId] = useState<number | null>(null)
 
   const canVerifyAnswers = user?.role === 'SPECIALIST' || user?.role === 'ADMIN'
+  const canCloseQuestion = question !== null && question.status === 'OPEN' && (
+    user?.id === question.author_id ||
+    user?.role === 'SPECIALIST' ||
+    user?.role === 'ADMIN'
+  )
 
   const loadPage = async (questionId: number) => {
     const [loadedQuestion, loadedAnswers] = await Promise.all([
@@ -324,6 +330,16 @@ export function QuestionPage() {
       // ignore
     } finally {
       setVotePendingId(null)
+    }
+  }
+
+  const handleCloseQuestion = async () => {
+    if (!id) return
+    try {
+      await closeQuestion(parseInt(id, 10))
+      setQuestion((prev) => prev ? { ...prev, status: 'CLOSED' } : prev)
+    } catch {
+      // ignore
     }
   }
 
@@ -406,7 +422,14 @@ export function QuestionPage() {
               <p className="text-xs text-muted-foreground">{formatRelative(question.created_at)}</p>
             </div>
           </div>
-          <span className="text-xs text-muted-foreground">{question.view_count} просмотров</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">{question.view_count} просмотров</span>
+            {canCloseQuestion && (
+              <Button size="sm" variant="secondary" onClick={handleCloseQuestion}>
+                Закрыть вопрос
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -443,7 +466,8 @@ export function QuestionPage() {
                 onChange={(e) => setAnswerText(e.target.value)}
                 className="w-full resize-y rounded-md border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-muted-foreground">Прикрепить файлы можно после публикации ответа</span>
                 <Button size="sm" disabled={!answerText.trim() || submitting} onClick={handleAnswerSubmit}>
                   {submitting ? 'Публикация...' : 'Опубликовать ответ'}
                 </Button>
