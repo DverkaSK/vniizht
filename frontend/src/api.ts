@@ -126,12 +126,12 @@ export const deleteComment = (id: number) =>
 // ── Вложения ──────────────────────────────────────────────────
 
 export const getAttachments = (targetType: string, targetId: number) =>
-  request<Attachment[]>(`/attachments?target_type=${targetType}&target_id=${targetId}`)
+  request<Attachment[]>(`/attachments?target_type=${targetType.toUpperCase()}&target_id=${targetId}`)
 
 export const uploadAttachment = (file: File, targetType: string, targetId: number) => {
   const form = new FormData()
   form.append('file', file)
-  form.append('target_type', targetType)
+  form.append('target_type', targetType.toUpperCase())
   form.append('target_id', String(targetId))
   return fetch(BASE + '/attachments', {
     method: 'POST',
