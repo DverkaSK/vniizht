@@ -181,6 +181,49 @@ func (r *QuestionRepo) ListRecentByAuthor(ctx context.Context, userID int64, lim
 	return qs, rows.Err()
 }
 
+type ExportQuestion struct {
+	ID         int64
+	Title      string
+	Body       string
+	AnswerBody *string
+}
+
+func (r *QuestionRepo) ListTitles(ctx context.Context) (map[string]struct{}, error) {
+	rows, err := r.db.Query(ctx, queries.QuestionListTitles)
+	if err != nil {
+		return nil, fmt.Errorf("list question titles: %w", err)
+	}
+	defer rows.Close()
+
+	titles := make(map[string]struct{})
+	for rows.Next() {
+		var title string
+		if err := rows.Scan(&title); err != nil {
+			return nil, err
+		}
+		titles[title] = struct{}{}
+	}
+	return titles, rows.Err()
+}
+
+func (r *QuestionRepo) ListForExport(ctx context.Context) ([]ExportQuestion, error) {
+	rows, err := r.db.Query(ctx, queries.QuestionListForExport)
+	if err != nil {
+		return nil, fmt.Errorf("list questions for export: %w", err)
+	}
+	defer rows.Close()
+
+	var result []ExportQuestion
+	for rows.Next() {
+		var q ExportQuestion
+		if err := rows.Scan(&q.ID, &q.Title, &q.Body, &q.AnswerBody); err != nil {
+			return nil, err
+		}
+		result = append(result, q)
+	}
+	return result, rows.Err()
+}
+
 func (r *QuestionRepo) getTags(ctx context.Context, questionID int64) ([]model.Tag, error) {
 	rows, err := r.db.Query(ctx, queries.QuestionTagsGet, questionID)
 	if err != nil {

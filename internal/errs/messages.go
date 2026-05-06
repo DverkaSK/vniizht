@@ -98,6 +98,12 @@ const (
 )
 
 const (
+	ImportInvalidBody = "некорректный формат данных для импорта"
+	ImportError       = "ошибка импорта данных"
+	ExportError       = "ошибка экспорта данных"
+)
+
+const (
 	UserNotFound        = "пользователь не найден"
 	UserDuplicate       = "пользователь с таким логином или email уже существует"
 	UserFieldsRequired  = "логин, email и пароль обязательны"

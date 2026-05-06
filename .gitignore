@@ -2,7 +2,7 @@
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
 # Binaries for programs and plugins
-*.exeвсё
+*.exe
 *.exe~
 *.dll
 *.so
@@ -33,4 +33,9 @@ go.work.sum
 # .vscode/
 
 # Claude local settings
-.claude/
+.claude/*.md
+.claude/*.json
+.claude/memory/
+
+# StarUML generator scripts
+docs/*.py

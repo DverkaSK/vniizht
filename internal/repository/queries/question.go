@@ -81,4 +81,12 @@ const (
 		WHERE q.author_id = $1
 		ORDER BY q.created_at DESC
 		LIMIT $2`
+
+	QuestionListForExport = `
+		SELECT q.id, q.title, q.body, a.body
+		FROM questions q
+		LEFT JOIN answers a ON a.question_id = q.id AND a.is_verified = true
+		ORDER BY q.id`
+
+	QuestionListTitles = `SELECT title FROM questions`
 )

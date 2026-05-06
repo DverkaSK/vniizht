@@ -15,11 +15,11 @@ import (
 
 	"vniizht/internal/config"
 	"vniizht/internal/db"
-	"vniizht/internal/storage"
 	"vniizht/internal/handler"
 	"vniizht/internal/middleware"
 	"vniizht/internal/repository"
 	"vniizht/internal/service"
+	"vniizht/internal/storage"
 )
 
 func main() {
@@ -67,6 +67,7 @@ func main() {
 	attachmentSvc := service.NewAttachmentService(attachmentRepo, attachmentStorage)
 	userSvc := service.NewUserService(userRepo, questionRepo, answerRepo)
 	searchSvc := service.NewSearchService(searchRepo)
+	importSvc := service.NewImportService(questionRepo, answerRepo)
 
 	handlers := &handler.Handlers{
 		Auth:        handler.NewAuthHandler(authSvc),
@@ -77,6 +78,7 @@ func main() {
 		Users:       handler.NewUsersHandler(userSvc),
 		Search:      handler.NewSearchHandler(searchSvc),
 		Admin:       handler.NewAdminHandler(adminSvc),
+		Import:      handler.NewImportHandler(importSvc),
 	}
 
 	r := chi.NewRouter()

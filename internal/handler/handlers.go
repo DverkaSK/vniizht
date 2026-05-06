@@ -9,4 +9,5 @@ type Handlers struct {
 	Users       *UsersHandler
 	Search      *SearchHandler
 	Admin       *AdminHandler
+	Import      *ImportHandler
 }

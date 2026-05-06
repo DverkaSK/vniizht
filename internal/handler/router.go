@@ -88,6 +88,8 @@ func NewRouter(h *Handlers, auth *service.AuthService) http.Handler {
 			r.Patch("/{tagID}", h.Admin.UpdateTag)
 			r.Delete("/{tagID}", h.Admin.DeleteTag)
 		})
+		r.Post("/import", h.Import.Import)
+		r.Get("/export", h.Import.Export)
 	})
 
 	return r
