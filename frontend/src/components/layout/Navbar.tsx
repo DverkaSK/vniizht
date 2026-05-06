@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Bell, Search, ChevronDown, LogOut, User, Menu, X } from 'lucide-react'
+import { Bell, Search, ChevronDown, LogOut, User, Menu, X, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/context/AuthContext'
@@ -91,6 +91,15 @@ export function Navbar() {
                         >
                           <User className="h-4 w-4" /> Профиль
                         </Link>
+                        {user.role === 'ADMIN' && (
+                          <Link
+                            to="/admin"
+                            className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors"
+                            onClick={() => setUserMenuOpen(false)}
+                          >
+                            <Shield className="h-4 w-4" /> Администрирование
+                          </Link>
+                        )}
                         <div className="border-t border-border mt-1">
                           <button
                             onClick={handleLogout}
@@ -134,6 +143,11 @@ export function Navbar() {
               <Link to={`/users/${user.id}`} className="flex items-center gap-2 py-2 text-sm" onClick={() => setMenuOpen(false)}>
                 <User className="h-4 w-4" /> Профиль ({user.username})
               </Link>
+              {user.role === 'ADMIN' && (
+                <Link to="/admin" className="flex items-center gap-2 py-2 text-sm" onClick={() => setMenuOpen(false)}>
+                  <Shield className="h-4 w-4" /> Администрирование
+                </Link>
+              )}
               <button onClick={handleLogout} className="flex items-center gap-2 py-2 text-sm text-red-600">
                 <LogOut className="h-4 w-4" /> Выйти
               </button>

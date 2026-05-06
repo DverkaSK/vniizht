@@ -7,6 +7,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { SearchPage } from '@/pages/SearchPage'
 import { CreateQuestionPage } from '@/pages/CreateQuestionPage'
+import { AdminPage } from '@/pages/AdminPage'
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -60,6 +61,14 @@ export default function App() {
             element={
               <Layout>
                 <ProfilePage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <Layout>
+                <AdminPage />
               </Layout>
             }
           />

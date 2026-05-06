@@ -166,6 +166,17 @@ export const search = (params: {
   return request<SearchResponse>(`/search?${qs}`)
 }
 
+// ── Администрирование ─────────────────────────────────────────
+
+export const importData = (trainingData: unknown[]) =>
+  request<{ imported: number }>('/admin/import', {
+    method: 'POST',
+    body: JSON.stringify({ training_data: trainingData }),
+  })
+
+export const exportData = () =>
+  fetch(BASE + '/admin/export', { credentials: 'include' })
+
 // ── Категории и теги ──────────────────────────────────────────
 
 export const getCategories = () => request<Category[]>('/categories')
