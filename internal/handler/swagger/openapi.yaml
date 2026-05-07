@@ -1,0 +1,2049 @@
+openapi: 3.0.3
+info:
+  title: ISS APK Elbrus API
+  version: "1.0.0"
+  description: |
+    REST API for the ISS APK Elbrus knowledge base.
+
+    Protected endpoints accept either:
+    - a `Bearer` token returned by `POST /auth/login`
+    - a `session` cookie created by the same login endpoint
+
+servers:
+  - url: /api
+    description: API behind nginx reverse proxy
+
+tags:
+  - name: Auth
+  - name: Health
+  - name: Questions
+  - name: Answers
+  - name: Comments
+  - name: Attachments
+  - name: Search
+  - name: Users
+  - name: Notifications
+  - name: Admin
+  - name: Import
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: API is available
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Logged in successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Logged out
+
+  /search:
+    get:
+      tags: [Search]
+      summary: Full-text search
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: category_id
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: tag_id
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: status
+          schema:
+            $ref: "#/components/schemas/QuestionStatus"
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        "400":
+          $ref: "#/components/responses/Error400"
+
+  /categories:
+    get:
+      tags: [Admin]
+      summary: List categories
+      responses:
+        "200":
+          description: Category list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /tags:
+    get:
+      tags: [Admin]
+      summary: List tags
+      responses:
+        "200":
+          description: Tag list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tag"
+
+  /questions:
+    get:
+      tags: [Questions]
+      summary: List questions
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: status
+          schema:
+            $ref: "#/components/schemas/QuestionStatus"
+        - in: query
+          name: category_id
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: tag_id
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: assigned_specialist_id
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Paginated question list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionListResponse"
+        "400":
+          $ref: "#/components/responses/Error400"
+    post:
+      tags: [Questions]
+      summary: Create question
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuestionRequest"
+      responses:
+        "201":
+          description: Question created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Question"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+
+  /questions/{questionID}:
+    get:
+      tags: [Questions]
+      summary: Get question
+      parameters:
+        - $ref: "#/components/parameters/QuestionID"
+      responses:
+        "200":
+          description: Question details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Question"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "404":
+          $ref: "#/components/responses/Error404"
+    patch:
+      tags: [Questions]
+      summary: Update question
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/QuestionID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateQuestionRequest"
+      responses:
+        "204":
+          description: Question updated
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+    delete:
+      tags: [Questions]
+      summary: Delete question
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/QuestionID"
+      responses:
+        "204":
+          description: Question deleted
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /questions/{questionID}/close:
+    patch:
+      tags: [Questions]
+      summary: Close question
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/QuestionID"
+      responses:
+        "204":
+          description: Question closed
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /questions/{questionID}/duplicate:
+    patch:
+      tags: [Questions]
+      summary: Mark question as duplicate
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/QuestionID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DuplicateQuestionRequest"
+      responses:
+        "204":
+          description: Question marked as duplicate
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+
+  /questions/{questionID}/assign:
+    patch:
+      tags: [Questions]
+      summary: Assign specialist to question
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/QuestionID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignQuestionRequest"
+      responses:
+        "204":
+          description: Specialist assigned
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /questions/{questionID}/history:
+    get:
+      tags: [Questions]
+      summary: Get question history
+      parameters:
+        - $ref: "#/components/parameters/QuestionID"
+      responses:
+        "200":
+          description: Question history entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuestionHistoryEntry"
+        "400":
+          $ref: "#/components/responses/Error400"
+
+  /questions/{questionID}/answers:
+    get:
+      tags: [Answers]
+      summary: List answers for question
+      parameters:
+        - $ref: "#/components/parameters/QuestionID"
+      responses:
+        "200":
+          description: Answers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Answer"
+        "400":
+          $ref: "#/components/responses/Error400"
+    post:
+      tags: [Answers]
+      summary: Create answer
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/QuestionID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BodyRequest"
+      responses:
+        "201":
+          description: Answer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Answer"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+
+  /answers/{answerID}:
+    patch:
+      tags: [Answers]
+      summary: Update answer
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AnswerID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BodyRequest"
+      responses:
+        "204":
+          description: Answer updated
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+    delete:
+      tags: [Answers]
+      summary: Delete answer
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AnswerID"
+      responses:
+        "204":
+          description: Answer deleted
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /answers/{answerID}/verify:
+    patch:
+      tags: [Answers]
+      summary: Verify answer
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AnswerID"
+      responses:
+        "204":
+          description: Answer verified
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+    delete:
+      tags: [Answers]
+      summary: Remove verification from answer
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AnswerID"
+      responses:
+        "204":
+          description: Verification removed
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /answers/{answerID}/vote:
+    post:
+      tags: [Answers]
+      summary: Create vote for answer
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AnswerID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoteRequest"
+      responses:
+        "204":
+          description: Vote created
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+    patch:
+      tags: [Answers]
+      summary: Update vote for answer
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AnswerID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoteRequest"
+      responses:
+        "204":
+          description: Vote updated
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+    delete:
+      tags: [Answers]
+      summary: Delete vote for answer
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AnswerID"
+      responses:
+        "204":
+          description: Vote deleted
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+
+  /answers/{answerID}/history:
+    get:
+      tags: [Answers]
+      summary: Get answer history
+      parameters:
+        - $ref: "#/components/parameters/AnswerID"
+      responses:
+        "200":
+          description: Answer history entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnswerHistoryEntry"
+        "400":
+          $ref: "#/components/responses/Error400"
+
+  /answers/{answerID}/comments:
+    get:
+      tags: [Comments]
+      summary: List comments for answer
+      parameters:
+        - $ref: "#/components/parameters/AnswerID"
+      responses:
+        "200":
+          description: Comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+        "400":
+          $ref: "#/components/responses/Error400"
+    post:
+      tags: [Comments]
+      summary: Create comment
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AnswerID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BodyRequest"
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /comments/{commentID}:
+    patch:
+      tags: [Comments]
+      summary: Update comment
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CommentID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BodyRequest"
+      responses:
+        "200":
+          description: Comment updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+    delete:
+      tags: [Comments]
+      summary: Delete comment
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CommentID"
+      responses:
+        "204":
+          description: Comment deleted
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /attachments:
+    get:
+      tags: [Attachments]
+      summary: List attachments
+      parameters:
+        - in: query
+          name: target_type
+          required: true
+          schema:
+            $ref: "#/components/schemas/AttachmentTarget"
+        - in: query
+          name: target_id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Attachments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Attachment"
+        "400":
+          $ref: "#/components/responses/Error400"
+    post:
+      tags: [Attachments]
+      summary: Upload attachment
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, target_type, target_id]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                target_type:
+                  $ref: "#/components/schemas/AttachmentTarget"
+                target_id:
+                  type: integer
+                  format: int64
+      responses:
+        "201":
+          description: Attachment uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attachment"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+
+  /attachments/{attachmentID}:
+    get:
+      tags: [Attachments]
+      summary: Download attachment
+      parameters:
+        - $ref: "#/components/parameters/AttachmentID"
+      responses:
+        "200":
+          description: File stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/Error400"
+        "404":
+          $ref: "#/components/responses/Error404"
+    delete:
+      tags: [Attachments]
+      summary: Delete attachment
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AttachmentID"
+      responses:
+        "204":
+          description: Attachment deleted
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateUser"
+        "401":
+          $ref: "#/components/responses/Error401"
+
+  /users/{userID}:
+    get:
+      tags: [Users]
+      summary: Get public user profile
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      responses:
+        "200":
+          description: Public user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicUser"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+        "401":
+          $ref: "#/components/responses/Error401"
+
+  /notifications/unread-count:
+    get:
+      tags: [Notifications]
+      summary: Get unread notifications count
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnreadCountResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+
+  /notifications/read-all:
+    patch:
+      tags: [Notifications]
+      summary: Mark all notifications as read
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "204":
+          description: All notifications marked as read
+        "401":
+          $ref: "#/components/responses/Error401"
+
+  /notifications/{notifID}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark notification as read
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/NotificationID"
+      responses:
+        "204":
+          description: Notification marked as read
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+
+  /notifications/preferences:
+    get:
+      tags: [Notifications]
+      summary: Get notification preferences
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Notification preferences
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationPreference"
+        "401":
+          $ref: "#/components/responses/Error401"
+    put:
+      tags: [Notifications]
+      summary: Save notification preferences
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/NotificationPreference"
+      responses:
+        "204":
+          description: Preferences saved
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: List users
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUser"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+    post:
+      tags: [Admin]
+      summary: Create user
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "409":
+          $ref: "#/components/responses/Error409"
+
+  /admin/users/{userID}/role:
+    patch:
+      tags: [Admin]
+      summary: Change user role
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeUserRoleRequest"
+      responses:
+        "204":
+          description: User role updated
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /admin/users/{userID}/active:
+    patch:
+      tags: [Admin]
+      summary: Activate or deactivate user
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetUserActiveRequest"
+      responses:
+        "204":
+          description: User activity updated
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /admin/categories:
+    get:
+      tags: [Admin]
+      summary: List categories for admin
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+    post:
+      tags: [Admin]
+      summary: Create category
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryMutationRequest"
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "409":
+          $ref: "#/components/responses/Error409"
+
+  /admin/categories/{categoryID}:
+    patch:
+      tags: [Admin]
+      summary: Update category
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CategoryID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryMutationRequest"
+      responses:
+        "204":
+          description: Category updated
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+    delete:
+      tags: [Admin]
+      summary: Delete category
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CategoryID"
+      responses:
+        "204":
+          description: Category deleted
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /admin/tags:
+    get:
+      tags: [Admin]
+      summary: List tags for admin
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tag"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+    post:
+      tags: [Admin]
+      summary: Create tag
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagMutationRequest"
+      responses:
+        "201":
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "409":
+          $ref: "#/components/responses/Error409"
+
+  /admin/tags/{tagID}:
+    patch:
+      tags: [Admin]
+      summary: Update tag
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TagID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagMutationRequest"
+      responses:
+        "204":
+          description: Tag updated
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+    delete:
+      tags: [Admin]
+      summary: Delete tag
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TagID"
+      responses:
+        "204":
+          description: Tag deleted
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+
+  /admin/import:
+    post:
+      tags: [Import]
+      summary: Import training data
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportRequest"
+      responses:
+        "200":
+          description: Imported count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportedCountResponse"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+
+  /admin/export:
+    get:
+      tags: [Import]
+      summary: Export training data
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Exported training data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportResponse"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: session-token
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session
+
+  parameters:
+    QuestionID:
+      in: path
+      name: questionID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    AnswerID:
+      in: path
+      name: answerID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    CommentID:
+      in: path
+      name: commentID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    AttachmentID:
+      in: path
+      name: attachmentID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    UserID:
+      in: path
+      name: userID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    CategoryID:
+      in: path
+      name: categoryID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    TagID:
+      in: path
+      name: tagID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    NotificationID:
+      in: path
+      name: notifID
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+  responses:
+    Error400:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Error401:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Error403:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Error404:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Error409:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: invalid request body
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          format: password
+          example: secret
+
+    TokenResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          example: c3d6f8a6dcb2433d9aef4f50daac3ef2
+
+    Role:
+      type: string
+      enum: [GUEST, USER, SPECIALIST, ADMIN]
+
+    QuestionStatus:
+      type: string
+      enum: [OPEN, CLOSED, DUPLICATE]
+
+    VoteValue:
+      type: string
+      enum: [UP, DOWN]
+
+    AttachmentTarget:
+      type: string
+      enum: [QUESTION, ANSWER, COMMENT]
+
+    NotificationType:
+      type: string
+      enum:
+        - NEW_ANSWER
+        - ANSWER_VERIFIED
+        - QUESTION_ASSIGNED
+        - QUESTION_CLOSED
+        - NEW_COMMENT
+
+    Tag:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Category:
+      type: object
+      required: [id, name, description]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+        specialist_id:
+          type: integer
+          format: int64
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Question:
+      type: object
+      required:
+        - id
+        - author_id
+        - author_username
+        - title
+        - body
+        - status
+        - view_count
+        - answer_count
+        - has_verified
+        - tags
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+        author_id:
+          type: integer
+          format: int64
+        author_username:
+          type: string
+        category_id:
+          type: integer
+          format: int64
+          nullable: true
+        specialist_id:
+          type: integer
+          format: int64
+          nullable: true
+        specialist_username:
+          type: string
+          nullable: true
+        duplicate_of:
+          type: integer
+          format: int64
+          nullable: true
+        title:
+          type: string
+        body:
+          type: string
+        status:
+          $ref: "#/components/schemas/QuestionStatus"
+        view_count:
+          type: integer
+        answer_count:
+          type: integer
+        has_verified:
+          type: boolean
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tag"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    QuestionListResponse:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Question"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    Answer:
+      type: object
+      required:
+        - id
+        - question_id
+        - author_id
+        - author_username
+        - body
+        - is_verified
+        - vote_score
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+        question_id:
+          type: integer
+          format: int64
+        author_id:
+          type: integer
+          format: int64
+        author_username:
+          type: string
+        body:
+          type: string
+        is_verified:
+          type: boolean
+        vote_score:
+          type: integer
+        current_user_vote:
+          $ref: "#/components/schemas/VoteValue"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Comment:
+      type: object
+      required:
+        - id
+        - answer_id
+        - author_id
+        - author_username
+        - body
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+        answer_id:
+          type: integer
+          format: int64
+        author_id:
+          type: integer
+          format: int64
+        author_username:
+          type: string
+        body:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Attachment:
+      type: object
+      required:
+        - id
+        - uploader_id
+        - target_type
+        - target_id
+        - filename
+        - mime_type
+        - size_bytes
+        - url
+      properties:
+        id:
+          type: integer
+          format: int64
+        uploader_id:
+          type: integer
+          format: int64
+        target_type:
+          $ref: "#/components/schemas/AttachmentTarget"
+        target_id:
+          type: integer
+          format: int64
+        filename:
+          type: string
+        mime_type:
+          type: string
+        size_bytes:
+          type: integer
+          format: int64
+        url:
+          type: string
+          example: /attachments/15
+
+    SearchResult:
+      type: object
+      required:
+        - type
+        - question_id
+        - question_title
+        - snippet
+        - status
+        - author_id
+        - created_at
+        - rank
+      properties:
+        type:
+          type: string
+          enum: [question, answer]
+        answer_id:
+          type: integer
+          format: int64
+          nullable: true
+        question_id:
+          type: integer
+          format: int64
+        question_title:
+          type: string
+        snippet:
+          type: string
+        status:
+          $ref: "#/components/schemas/QuestionStatus"
+        author_id:
+          type: integer
+          format: int64
+        category_id:
+          type: integer
+          format: int64
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        rank:
+          type: number
+          format: float
+
+    SearchResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResult"
+        total:
+          type: integer
+
+    PrivateUser:
+      type: object
+      required:
+        - id
+        - username
+        - email
+        - role
+        - reputation
+        - is_active
+        - created_at
+        - question_count
+        - answer_count
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/Role"
+        reputation:
+          type: integer
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        question_count:
+          type: integer
+        answer_count:
+          type: integer
+
+    PublicUser:
+      type: object
+      required:
+        - id
+        - username
+        - role
+        - reputation
+        - created_at
+        - question_count
+        - answer_count
+        - recent_questions
+        - recent_answers
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        reputation:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        question_count:
+          type: integer
+        answer_count:
+          type: integer
+        recent_questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentQuestion"
+        recent_answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentAnswer"
+
+    RecentQuestion:
+      type: object
+      required: [id, title, status, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        status:
+          $ref: "#/components/schemas/QuestionStatus"
+        created_at:
+          type: string
+          format: date-time
+
+    RecentAnswer:
+      type: object
+      required: [id, question_id, snippet, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        question_id:
+          type: integer
+          format: int64
+        snippet:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    NotificationPayload:
+      type: object
+      properties:
+        question_id:
+          type: integer
+          format: int64
+        question_title:
+          type: string
+        answer_id:
+          type: integer
+          format: int64
+        comment_id:
+          type: integer
+          format: int64
+        actor_username:
+          type: string
+
+    Notification:
+      type: object
+      required: [id, type, payload, is_read, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        type:
+          $ref: "#/components/schemas/NotificationType"
+        payload:
+          $ref: "#/components/schemas/NotificationPayload"
+        is_read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    NotificationPreference:
+      type: object
+      required: [type, email_enabled]
+      properties:
+        type:
+          $ref: "#/components/schemas/NotificationType"
+        email_enabled:
+          type: boolean
+
+    QuestionHistoryEntry:
+      type: object
+      required: [id, editor_id, editor_username, title, body, edited_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        editor_id:
+          type: integer
+          format: int64
+        editor_username:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        edited_at:
+          type: string
+          format: date-time
+
+    AnswerHistoryEntry:
+      type: object
+      required: [id, editor_id, editor_username, body, edited_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        editor_id:
+          type: integer
+          format: int64
+        editor_username:
+          type: string
+        body:
+          type: string
+        edited_at:
+          type: string
+          format: date-time
+
+    AdminUser:
+      type: object
+      required: [id, username, email, role, is_active, reputation]
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/Role"
+        is_active:
+          type: boolean
+        reputation:
+          type: integer
+
+    LoginResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+
+    CreateQuestionRequest:
+      type: object
+      required: [title, body]
+      properties:
+        title:
+          type: string
+        body:
+          type: string
+        category_id:
+          type: integer
+          format: int64
+          nullable: true
+        tag_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    UpdateQuestionRequest:
+      type: object
+      required: [title, body]
+      properties:
+        title:
+          type: string
+        body:
+          type: string
+        tag_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    AssignQuestionRequest:
+      type: object
+      properties:
+        specialist_id:
+          type: integer
+          format: int64
+          nullable: true
+
+    DuplicateQuestionRequest:
+      type: object
+      required: [duplicate_of]
+      properties:
+        duplicate_of:
+          type: integer
+          format: int64
+
+    BodyRequest:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+
+    VoteRequest:
+      type: object
+      required: [value]
+      properties:
+        value:
+          $ref: "#/components/schemas/VoteValue"
+
+    CreateUserRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        role:
+          $ref: "#/components/schemas/Role"
+
+    ChangeUserRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: "#/components/schemas/Role"
+
+    SetUserActiveRequest:
+      type: object
+      required: [is_active]
+      properties:
+        is_active:
+          type: boolean
+
+    CategoryMutationRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        specialist_id:
+          type: integer
+          format: int64
+          nullable: true
+
+    TagMutationRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    TrainingEntry:
+      type: object
+      required: [id, title, questions, positive, original]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        questions:
+          type: array
+          items:
+            type: string
+        positive:
+          type: string
+        original:
+          type: string
+
+    ImportRequest:
+      type: object
+      required: [training_data]
+      properties:
+        training_data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrainingEntry"
+
+    ImportedCountResponse:
+      type: object
+      required: [imported]
+      properties:
+        imported:
+          type: integer
+
+    ExportResponse:
+      type: object
+      required: [training_data]
+      properties:
+        training_data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrainingEntry"
+
+    UnreadCountResponse:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer

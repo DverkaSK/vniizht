@@ -14,6 +14,7 @@ func NewRouter(h *Handlers, auth *service.AuthService) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Authenticate(auth))
+	registerSwaggerRoutes(r)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
