@@ -8,6 +8,8 @@ import { ProfilePage } from '@/pages/ProfilePage'
 import { SearchPage } from '@/pages/SearchPage'
 import { CreateQuestionPage } from '@/pages/CreateQuestionPage'
 import { AdminPage } from '@/pages/AdminPage'
+import { NotificationsPage } from '@/pages/NotificationsPage'
+import { SettingsPage } from '@/pages/SettingsPage'
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -69,6 +71,22 @@ export default function App() {
             element={
               <Layout>
                 <AdminPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <Layout>
+                <NotificationsPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <Layout>
+                <SettingsPage />
               </Layout>
             }
           />

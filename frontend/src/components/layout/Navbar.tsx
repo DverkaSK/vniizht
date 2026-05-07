@@ -1,15 +1,31 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Bell, Search, ChevronDown, LogOut, User, Menu, X, Shield } from 'lucide-react'
+import { Bell, Search, ChevronDown, LogOut, User, Menu, X, Shield, Check, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/context/AuthContext'
+import * as api from '@/api'
+import type { Notification } from '@/types'
+import { formatDate } from '@/api'
+
+const NOTIF_LABELS: Record<string, string> = {
+  NEW_ANSWER: 'Новый ответ на ваш вопрос',
+  ANSWER_VERIFIED: 'Ваш ответ подтверждён',
+  QUESTION_ASSIGNED: 'Вам назначен вопрос',
+  QUESTION_CLOSED: 'Ваш вопрос закрыт',
+  NEW_COMMENT: 'Комментарий к вашему ответу',
+}
 
 export function Navbar() {
   const { user, logout } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [bellOpen, setBellOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifsLoading, setNotifsLoading] = useState(false)
+  const bellRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
   const handleSearch = (e: React.FormEvent) => {
@@ -23,6 +39,42 @@ export function Navbar() {
     setUserMenuOpen(false)
     await logout()
     navigate('/login')
+  }
+
+  useEffect(() => {
+    if (!user) return
+    const fetchCount = () => api.getUnreadCount().then((r) => setUnreadCount(r.count)).catch(() => {})
+    fetchCount()
+    const timer = setInterval(fetchCount, 30_000)
+    return () => clearInterval(timer)
+  }, [user])
+
+  const openBell = async () => {
+    if (bellOpen) { setBellOpen(false); return }
+    setBellOpen(true)
+    setNotifsLoading(true)
+    try {
+      const items = await api.getNotifications(1)
+      setNotifications(items.slice(0, 7))
+    } catch { /* ignore */ } finally {
+      setNotifsLoading(false)
+    }
+  }
+
+  const handleMarkRead = async (n: Notification) => {
+    if (!n.is_read) {
+      await api.markNotificationRead(n.id).catch(() => {})
+      setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, is_read: true } : x))
+      setUnreadCount((c) => Math.max(0, c - 1))
+    }
+    setBellOpen(false)
+    if (n.payload.question_id) navigate(`/questions/${n.payload.question_id}`)
+  }
+
+  const handleMarkAll = async () => {
+    await api.markAllNotificationsRead().catch(() => {})
+    setNotifications((prev) => prev.map((x) => ({ ...x, is_read: true })))
+    setUnreadCount(0)
   }
 
   return (
@@ -61,9 +113,65 @@ export function Navbar() {
                   Задать вопрос
                 </Button>
 
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-4 w-4" />
-                </Button>
+                {/* Bell */}
+                <div ref={bellRef} className="relative">
+                  <Button variant="ghost" size="icon" className="relative" onClick={openBell}>
+                    <Bell className="h-4 w-4" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </Button>
+
+                  {bellOpen && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setBellOpen(false)} />
+                      <div className="absolute right-0 top-full mt-1 z-40 w-80 rounded-md border border-border bg-background shadow-lg">
+                        <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+                          <span className="text-sm font-medium">Уведомления</span>
+                          <div className="flex items-center gap-2">
+                            {unreadCount > 0 && (
+                              <button onClick={handleMarkAll} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                                <Check className="h-3 w-3" /> Прочитать все
+                              </button>
+                            )}
+                            <Link to="/notifications" className="text-xs text-primary hover:underline" onClick={() => setBellOpen(false)}>
+                              Все
+                            </Link>
+                          </div>
+                        </div>
+                        <div className="max-h-80 overflow-y-auto divide-y divide-border">
+                          {notifsLoading ? (
+                            <div className="px-3 py-6 text-center text-sm text-muted-foreground">Загрузка...</div>
+                          ) : notifications.length === 0 ? (
+                            <div className="px-3 py-6 text-center text-sm text-muted-foreground">Нет уведомлений</div>
+                          ) : notifications.map((n) => (
+                            <button
+                              key={n.id}
+                              onClick={() => handleMarkRead(n)}
+                              className={`w-full text-left px-3 py-2.5 hover:bg-accent transition-colors ${!n.is_read ? 'bg-primary/5' : ''}`}
+                            >
+                              <div className="flex items-start gap-2">
+                                {!n.is_read && <span className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />}
+                                <div className={!n.is_read ? '' : 'ml-4'}>
+                                  <p className="text-xs font-medium text-foreground">{NOTIF_LABELS[n.type] ?? n.type}</p>
+                                  {n.payload.question_title && (
+                                    <p className="text-xs text-muted-foreground truncate max-w-[220px]">{n.payload.question_title}</p>
+                                  )}
+                                  {n.payload.actor_username && (
+                                    <p className="text-xs text-muted-foreground">от {n.payload.actor_username}</p>
+                                  )}
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">{formatDate(n.created_at)}</p>
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 {/* User menu */}
                 <div className="relative">
@@ -90,6 +198,25 @@ export function Navbar() {
                           onClick={() => setUserMenuOpen(false)}
                         >
                           <User className="h-4 w-4" /> Профиль
+                        </Link>
+                        <Link
+                          to="/notifications"
+                          className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <Bell className="h-4 w-4" /> Уведомления
+                          {unreadCount > 0 && (
+                            <span className="ml-auto rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5">
+                              {unreadCount}
+                            </span>
+                          )}
+                        </Link>
+                        <Link
+                          to="/settings"
+                          className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <Settings className="h-4 w-4" /> Настройки
                         </Link>
                         {user.role === 'ADMIN' && (
                           <Link
@@ -142,6 +269,17 @@ export function Navbar() {
               </Button>
               <Link to={`/users/${user.id}`} className="flex items-center gap-2 py-2 text-sm" onClick={() => setMenuOpen(false)}>
                 <User className="h-4 w-4" /> Профиль ({user.username})
+              </Link>
+              <Link to="/notifications" className="flex items-center gap-2 py-2 text-sm" onClick={() => setMenuOpen(false)}>
+                <Bell className="h-4 w-4" /> Уведомления
+                {unreadCount > 0 && (
+                  <span className="ml-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5">
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
+              <Link to="/settings" className="flex items-center gap-2 py-2 text-sm" onClick={() => setMenuOpen(false)}>
+                <Settings className="h-4 w-4" /> Настройки
               </Link>
               {user.role === 'ADMIN' && (
                 <Link to="/admin" className="flex items-center gap-2 py-2 text-sm" onClick={() => setMenuOpen(false)}>

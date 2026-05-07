@@ -67,6 +67,17 @@ func (r *UserRepo) UpdateRole(ctx context.Context, id int64, role model.Role) er
 	return nil
 }
 
+func (r *UserRepo) SetActive(ctx context.Context, id int64, active bool) error {
+	tag, err := r.db.Exec(ctx, queries.UserSetActive, active, id)
+	if err != nil {
+		return fmt.Errorf("set user active: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (r *UserRepo) List(ctx context.Context) ([]*model.User, error) {
 	rows, err := r.db.Query(ctx, queries.UserList)
 	if err != nil {

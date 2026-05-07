@@ -13,10 +13,12 @@ import (
 )
 
 type QuestionFilter struct {
-	Status     *model.QuestionStatus
-	CategoryID *int64
-	Limit      int
-	Offset     int
+	Status              *model.QuestionStatus
+	CategoryID          *int64
+	TagID               *int64
+	AssignedSpecialistID *int64
+	Limit               int
+	Offset              int
 }
 
 type QuestionRepo struct {
@@ -35,7 +37,7 @@ func (r *QuestionRepo) Create(ctx context.Context, q *model.Question, tagIDs []i
 	defer tx.Rollback(ctx)
 
 	err = tx.QueryRow(ctx, queries.QuestionCreate,
-		q.AuthorID, q.CategoryID, q.Title, q.Body,
+		q.AuthorID, q.CategoryID, q.SpecialistID, q.Title, q.Body,
 	).Scan(&q.ID, &q.Status, &q.ViewCount, &q.CreatedAt, &q.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create question: %w", err)
@@ -58,7 +60,7 @@ func (r *QuestionRepo) Create(ctx context.Context, q *model.Question, tagIDs []i
 func (r *QuestionRepo) GetByID(ctx context.Context, id int64) (*model.Question, error) {
 	q := &model.Question{}
 	err := r.db.QueryRow(ctx, queries.QuestionGetByID, id).
-		Scan(&q.ID, &q.AuthorID, &q.AuthorUsername, &q.CategoryID, &q.SpecialistID,
+		Scan(&q.ID, &q.AuthorID, &q.AuthorUsername, &q.CategoryID, &q.SpecialistID, &q.SpecialistUsername,
 			&q.Title, &q.Body, &q.Status, &q.DuplicateOf, &q.ViewCount,
 			&q.CreatedAt, &q.UpdatedAt, &q.AnswerCount, &q.HasVerified)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -81,7 +83,7 @@ func (r *QuestionRepo) GetByID(ctx context.Context, id int64) (*model.Question, 
 
 func (r *QuestionRepo) List(ctx context.Context, f QuestionFilter) ([]*model.Question, int, error) {
 	rows, err := r.db.Query(ctx, queries.QuestionList,
-		f.Status, f.CategoryID, f.Limit, f.Offset,
+		f.Status, f.CategoryID, f.TagID, f.AssignedSpecialistID, f.Limit, f.Offset,
 	)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list questions: %w", err)
@@ -91,7 +93,7 @@ func (r *QuestionRepo) List(ctx context.Context, f QuestionFilter) ([]*model.Que
 	var qs []*model.Question
 	for rows.Next() {
 		q := &model.Question{}
-		if err := rows.Scan(&q.ID, &q.AuthorID, &q.AuthorUsername, &q.CategoryID, &q.SpecialistID,
+		if err := rows.Scan(&q.ID, &q.AuthorID, &q.AuthorUsername, &q.CategoryID, &q.SpecialistID, &q.SpecialistUsername,
 			&q.Title, &q.Body, &q.Status, &q.DuplicateOf, &q.ViewCount,
 			&q.CreatedAt, &q.UpdatedAt, &q.AnswerCount, &q.HasVerified); err != nil {
 			return nil, 0, err
@@ -103,7 +105,7 @@ func (r *QuestionRepo) List(ctx context.Context, f QuestionFilter) ([]*model.Que
 	}
 
 	var total int
-	if err := r.db.QueryRow(ctx, queries.QuestionCount, f.Status, f.CategoryID).Scan(&total); err != nil {
+	if err := r.db.QueryRow(ctx, queries.QuestionCount, f.Status, f.CategoryID, f.TagID, f.AssignedSpecialistID).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count questions: %w", err)
 	}
 
@@ -153,6 +155,39 @@ func (r *QuestionRepo) Close(ctx context.Context, id int64) error {
 	return nil
 }
 
+func (r *QuestionRepo) AssignSpecialist(ctx context.Context, id int64, specialistID *int64) error {
+	tag, err := r.db.Exec(ctx, queries.QuestionAssign, id, specialistID)
+	if err != nil {
+		return fmt.Errorf("assign specialist: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *QuestionRepo) MarkDuplicate(ctx context.Context, id, duplicateOf int64) error {
+	tag, err := r.db.Exec(ctx, queries.QuestionMarkDuplicate, id, duplicateOf)
+	if err != nil {
+		return fmt.Errorf("mark duplicate: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *QuestionRepo) Delete(ctx context.Context, id int64) error {
+	tag, err := r.db.Exec(ctx, queries.QuestionDelete, id)
+	if err != nil {
+		return fmt.Errorf("delete question: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (r *QuestionRepo) CountByAuthor(ctx context.Context, userID int64) (int, error) {
 	var count int
 	if err := r.db.QueryRow(ctx, queries.QuestionCountByAuthor, userID).Scan(&count); err != nil {
@@ -171,7 +206,7 @@ func (r *QuestionRepo) ListRecentByAuthor(ctx context.Context, userID int64, lim
 	var qs []*model.Question
 	for rows.Next() {
 		q := &model.Question{}
-		if err := rows.Scan(&q.ID, &q.AuthorID, &q.AuthorUsername, &q.CategoryID, &q.SpecialistID,
+		if err := rows.Scan(&q.ID, &q.AuthorID, &q.AuthorUsername, &q.CategoryID, &q.SpecialistID, &q.SpecialistUsername,
 			&q.Title, &q.Body, &q.Status, &q.DuplicateOf, &q.ViewCount,
 			&q.CreatedAt, &q.UpdatedAt, &q.AnswerCount, &q.HasVerified); err != nil {
 			return nil, err
@@ -220,6 +255,24 @@ func (r *QuestionRepo) ListForExport(ctx context.Context) ([]ExportQuestion, err
 			return nil, err
 		}
 		result = append(result, q)
+	}
+	return result, rows.Err()
+}
+
+func (r *QuestionRepo) GetHistory(ctx context.Context, questionID int64) ([]model.QuestionHistory, error) {
+	rows, err := r.db.Query(ctx, queries.QuestionHistoryGet, questionID)
+	if err != nil {
+		return nil, fmt.Errorf("get question history: %w", err)
+	}
+	defer rows.Close()
+
+	var result []model.QuestionHistory
+	for rows.Next() {
+		var h model.QuestionHistory
+		if err := rows.Scan(&h.ID, &h.QuestionID, &h.EditorID, &h.EditorUsername, &h.Title, &h.Body, &h.EditedAt); err != nil {
+			return nil, err
+		}
+		result = append(result, h)
 	}
 	return result, rows.Err()
 }

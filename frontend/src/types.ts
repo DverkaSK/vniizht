@@ -60,6 +60,8 @@ export interface Question {
   author_username: string
   category_id?: number
   specialist_id?: number
+  specialist_username?: string
+  duplicate_of?: number
   title: string
   body: string
   status: QuestionStatus
@@ -128,4 +130,49 @@ export interface SearchResult {
 export interface SearchResponse {
   items: SearchResult[]
   total: number
+}
+
+export type NotificationType =
+  | 'NEW_ANSWER'
+  | 'ANSWER_VERIFIED'
+  | 'QUESTION_ASSIGNED'
+  | 'QUESTION_CLOSED'
+  | 'NEW_COMMENT'
+
+export interface NotificationPayload {
+  question_id?: number
+  question_title?: string
+  answer_id?: number
+  comment_id?: number
+  actor_username?: string
+}
+
+export interface Notification {
+  id: number
+  type: NotificationType
+  payload: NotificationPayload
+  is_read: boolean
+  created_at: string
+}
+
+export interface NotificationPreference {
+  type: NotificationType
+  email_enabled: boolean
+}
+
+export interface QuestionHistoryEntry {
+  id: number
+  editor_id: number
+  editor_username: string
+  title: string
+  body: string
+  edited_at: string
+}
+
+export interface AnswerHistoryEntry {
+  id: number
+  editor_id: number
+  editor_username: string
+  body: string
+  edited_at: string
 }

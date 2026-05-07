@@ -14,6 +14,17 @@ export function formatDate(date: string | Date): string {
   })
 }
 
+export function formatDateTime(date: string | Date): string {
+  return new Date(date).toLocaleString('ru-RU', {
+    day: 'numeric', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
+export function isEdited(createdAt: string | Date, updatedAt: string | Date): boolean {
+  return Math.abs(new Date(updatedAt).getTime() - new Date(createdAt).getTime()) > 2000
+}
+
 export function formatRelative(date: string | Date): string {
   const d = new Date(date)
   const now = new Date()

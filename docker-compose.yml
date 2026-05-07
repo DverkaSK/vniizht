@@ -3,7 +3,7 @@ services:
   nginx:
     image: nginx:1.27.5-alpine
     ports:
-      - "80:80"
+      - "8081:80"
     volumes:
       - ./frontend/dist:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
@@ -31,14 +31,25 @@ services:
       MINIO_BUCKET: attachments
       MINIO_USE_SSL: "false"
       SESSION_SECRET: ${SESSION_SECRET}
-      # В production nginx и app — один Origin, CORS не нужен
-      # Указывайте реальный адрес сервера если фронт и бэк на разных доменах
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      APP_URL: ${APP_URL:-http://localhost}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@elbrus.local}
+      SMTP_ENABLED: ${SMTP_ENABLED:-false}
     depends_on:
       postgres:
         condition: service_healthy
       minio:
         condition: service_healthy
+    restart: unless-stopped
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "8025:8025"   # веб-интерфейс для просмотра писем
     restart: unless-stopped
 
   postgres:
@@ -47,6 +58,8 @@ services:
       POSTGRES_DB: elbrus
       POSTGRES_USER: elbrus
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

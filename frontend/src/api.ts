@@ -42,11 +42,15 @@ export const getQuestions = (params?: {
   page?: number
   status?: string
   category_id?: number
+  tag_id?: number
+  assigned_specialist_id?: number
 }) => {
   const qs = new URLSearchParams()
   if (params?.page) qs.set('page', String(params.page))
   if (params?.status) qs.set('status', params.status)
   if (params?.category_id) qs.set('category_id', String(params.category_id))
+  if (params?.tag_id) qs.set('tag_id', String(params.tag_id))
+  if (params?.assigned_specialist_id) qs.set('assigned_specialist_id', String(params.assigned_specialist_id))
   return request<QuestionListResponse>(`/questions?${qs}`)
 }
 
@@ -67,6 +71,21 @@ export const updateQuestion = (id: number, data: {
 
 export const closeQuestion = (id: number) =>
   request<void>(`/questions/${id}/close`, { method: 'PATCH', body: '{}' })
+
+export const assignSpecialist = (id: number, specialistId: number | null) =>
+  request<void>(`/questions/${id}/assign`, {
+    method: 'PATCH',
+    body: JSON.stringify({ specialist_id: specialistId }),
+  })
+
+export const markQuestionDuplicate = (id: number, duplicateOf: number) =>
+  request<void>(`/questions/${id}/duplicate`, {
+    method: 'PATCH',
+    body: JSON.stringify({ duplicate_of: duplicateOf }),
+  })
+
+export const deleteQuestion = (id: number) =>
+  request<void>(`/questions/${id}`, { method: 'DELETE' })
 
 // ── Ответы ────────────────────────────────────────────────────
 
@@ -118,7 +137,7 @@ export const createComment = (answerId: number, body: string) =>
   })
 
 export const updateComment = (id: number, body: string) =>
-  request<void>(`/comments/${id}`, { method: 'PATCH', body: JSON.stringify({ body }) })
+  request<Comment>(`/comments/${id}`, { method: 'PATCH', body: JSON.stringify({ body }) })
 
 export const deleteComment = (id: number) =>
   request<void>(`/comments/${id}`, { method: 'DELETE' })
@@ -166,7 +185,42 @@ export const search = (params: {
   return request<SearchResponse>(`/search?${qs}`)
 }
 
-// ── Администрирование ─────────────────────────────────────────
+// ── Администрирование: пользователи ──────────────────────────
+
+export const adminListUsers = () => request<import('./types').User[]>('/admin/users')
+
+export const adminCreateUser = (data: { username: string; email: string; password: string; role: string }) =>
+  request<import('./types').User>('/admin/users', { method: 'POST', body: JSON.stringify(data) })
+
+export const adminChangeRole = (id: number, role: string) =>
+  request<void>(`/admin/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) })
+
+export const adminSetUserActive = (id: number, is_active: boolean) =>
+  request<void>(`/admin/users/${id}/active`, { method: 'PATCH', body: JSON.stringify({ is_active }) })
+
+// ── Администрирование: категории ──────────────────────────────
+
+export const adminCreateCategory = (data: { name: string; description: string; specialist_id?: number | null }) =>
+  request<import('./types').Category>('/admin/categories', { method: 'POST', body: JSON.stringify(data) })
+
+export const adminUpdateCategory = (id: number, data: { name: string; description: string; specialist_id?: number | null }) =>
+  request<void>(`/admin/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+
+export const adminDeleteCategory = (id: number) =>
+  request<void>(`/admin/categories/${id}`, { method: 'DELETE' })
+
+// ── Администрирование: теги ───────────────────────────────────
+
+export const adminCreateTag = (name: string) =>
+  request<import('./types').Tag>('/admin/tags', { method: 'POST', body: JSON.stringify({ name }) })
+
+export const adminUpdateTag = (id: number, name: string) =>
+  request<void>(`/admin/tags/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) })
+
+export const adminDeleteTag = (id: number) =>
+  request<void>(`/admin/tags/${id}`, { method: 'DELETE' })
+
+// ── Администрирование: импорт/экспорт ────────────────────────
 
 export const importData = (trainingData: unknown[]) =>
   request<{ imported: number }>('/admin/import', {
@@ -176,6 +230,34 @@ export const importData = (trainingData: unknown[]) =>
 
 export const exportData = () =>
   fetch(BASE + '/admin/export', { credentials: 'include' })
+
+// ── Уведомления ───────────────────────────────────────────────
+
+export const getNotifications = (page = 1) =>
+  request<import('./types').Notification[]>(`/notifications?page=${page}`)
+
+export const getUnreadCount = () =>
+  request<{ count: number }>('/notifications/unread-count')
+
+export const markNotificationRead = (id: number) =>
+  request<void>(`/notifications/${id}/read`, { method: 'PATCH', body: '{}' })
+
+export const markAllNotificationsRead = () =>
+  request<void>('/notifications/read-all', { method: 'PATCH', body: '{}' })
+
+export const getNotificationPreferences = () =>
+  request<import('./types').NotificationPreference[]>('/notifications/preferences')
+
+export const saveNotificationPreferences = (prefs: import('./types').NotificationPreference[]) =>
+  request<void>('/notifications/preferences', { method: 'PUT', body: JSON.stringify(prefs) })
+
+// ── История редактирования ────────────────────────────────────
+
+export const getQuestionHistory = (id: number) =>
+  request<import('./types').QuestionHistoryEntry[]>(`/questions/${id}/history`)
+
+export const getAnswerHistory = (id: number) =>
+  request<import('./types').AnswerHistoryEntry[]>(`/answers/${id}/history`)
 
 // ── Категории и теги ──────────────────────────────────────────
 

@@ -93,12 +93,13 @@ func (h *CommentsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.Update(r.Context(), id, user, req.Body); err != nil {
+	c, err := h.svc.Update(r.Context(), id, user, req.Body)
+	if err != nil {
 		mapErr(w, err, errs.CommentNotFound, errs.CommentForbidden, "", errs.CommentUpdateError)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	writeJSON(w, http.StatusOK, commentToResponse(c))
 }
 
 func (h *CommentsHandler) Delete(w http.ResponseWriter, r *http.Request) {

@@ -21,7 +21,12 @@ const (
 	CommentUpdate = `
 		UPDATE comments
 		SET body = $1, updated_at = NOW()
-		WHERE id = $2`
+		WHERE id = $2
+		RETURNING updated_at`
+
+	CommentHistoryInsert = `
+		INSERT INTO comment_history (comment_id, editor_id, body)
+		VALUES ($1, $2, $3)`
 
 	CommentDelete = `
 		DELETE FROM comments

@@ -12,10 +12,15 @@ import (
 type AnswerService struct {
 	repo      *repository.AnswerRepo
 	questions *repository.QuestionRepo
+	notifs    *NotificationService
 }
 
-func NewAnswerService(repo *repository.AnswerRepo, questions *repository.QuestionRepo) *AnswerService {
-	return &AnswerService{repo: repo, questions: questions}
+func NewAnswerService(repo *repository.AnswerRepo, questions *repository.QuestionRepo, notifs *NotificationService) *AnswerService {
+	return &AnswerService{repo: repo, questions: questions, notifs: notifs}
+}
+
+func (s *AnswerService) GetHistory(ctx context.Context, id int64) ([]model.AnswerHistory, error) {
+	return s.repo.GetHistory(ctx, id)
 }
 
 func (s *AnswerService) List(ctx context.Context, questionID int64, user *model.User) ([]*model.Answer, error) {
@@ -47,6 +52,15 @@ func (s *AnswerService) Create(ctx context.Context, questionID int64, user *mode
 		return nil, fmt.Errorf("create answer: %w", err)
 	}
 	a.AuthorUsername = user.Username
+
+	if q.AuthorID != user.ID {
+		s.notifs.Notify(ctx, q.AuthorID, model.NotifNewAnswer, model.NotificationPayload{
+			QuestionID:    q.ID,
+			QuestionTitle: q.Title,
+			AnswerID:      a.ID,
+			ActorUsername: user.Username,
+		})
+	}
 	return a, nil
 }
 
@@ -86,7 +100,20 @@ func (s *AnswerService) Verify(ctx context.Context, id int64, user *model.User) 
 		return err
 	}
 
-	return s.repo.SetVerified(ctx, answer.QuestionID, id)
+	if err := s.repo.SetVerified(ctx, answer.QuestionID, id); err != nil {
+		return err
+	}
+
+	q, err := s.questions.GetByID(ctx, answer.QuestionID)
+	if err == nil && answer.AuthorID != user.ID {
+		s.notifs.Notify(ctx, answer.AuthorID, model.NotifAnswerVerified, model.NotificationPayload{
+			QuestionID:    q.ID,
+			QuestionTitle: q.Title,
+			AnswerID:      answer.ID,
+			ActorUsername: user.Username,
+		})
+	}
+	return nil
 }
 
 func (s *AnswerService) Unverify(ctx context.Context, id int64, user *model.User) error {

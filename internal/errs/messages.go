@@ -50,9 +50,13 @@ const (
 	QuestionCreateError    = "ошибка создания вопроса"
 	QuestionUpdateError    = "ошибка обновления вопроса"
 	QuestionCloseError     = "ошибка закрытия вопроса"
-	QuestionAlreadyClosed  = "вопрос уже закрыт"
-	QuestionInvalidStatus  = "недопустимый статус вопроса"
-	QuestionInvalidPage    = "некорректный параметр страницы"
+	QuestionAlreadyClosed    = "вопрос уже закрыт"
+	QuestionInvalidStatus    = "недопустимый статус вопроса"
+	QuestionInvalidPage      = "некорректный параметр страницы"
+	QuestionDuplicateError   = "ошибка пометки дубликата"
+	QuestionSelfDuplicate    = "нельзя пометить вопрос дубликатом самого себя"
+	QuestionDuplicateInvalid = "оригинальный вопрос не найден"
+	QuestionAssignError      = "ошибка назначения специалиста"
 )
 
 const (
@@ -101,6 +105,12 @@ const (
 	ImportInvalidBody = "некорректный формат данных для импорта"
 	ImportError       = "ошибка импорта данных"
 	ExportError       = "ошибка экспорта данных"
+)
+
+const (
+	NotificationListError   = "ошибка получения уведомлений"
+	NotificationUpdateError = "ошибка обновления уведомлений"
+	NotificationInvalidID   = "некорректный идентификатор уведомления"
 )
 
 const (

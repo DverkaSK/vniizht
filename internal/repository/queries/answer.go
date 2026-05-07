@@ -73,6 +73,13 @@ const (
 		FROM votes
 		WHERE answer_id = $1 AND user_id = $2`
 
+	AnswerHistoryGet = `
+		SELECT ah.id, ah.answer_id, ah.editor_id, u.username, ah.body, ah.edited_at
+		FROM answer_history ah
+		JOIN users u ON u.id = ah.editor_id
+		WHERE ah.answer_id = $1
+		ORDER BY ah.edited_at DESC`
+
 	AnswerVoteRecount = `
 		UPDATE answers
 		SET vote_score = (

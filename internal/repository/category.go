@@ -52,12 +52,12 @@ func (r *CategoryRepo) GetByID(ctx context.Context, id int64) (*model.Category, 
 }
 
 func (r *CategoryRepo) Create(ctx context.Context, c *model.Category) error {
-	return r.db.QueryRow(ctx, queries.CategoryCreate, c.Name, c.Description).
+	return r.db.QueryRow(ctx, queries.CategoryCreate, c.Name, c.Description, c.SpecialistID).
 		Scan(&c.ID, &c.CreatedAt)
 }
 
 func (r *CategoryRepo) Update(ctx context.Context, c *model.Category) error {
-	tag, err := r.db.Exec(ctx, queries.CategoryUpdate, c.Name, c.Description, c.ID)
+	tag, err := r.db.Exec(ctx, queries.CategoryUpdate, c.Name, c.Description, c.SpecialistID, c.ID)
 	if err != nil {
 		return fmt.Errorf("update category: %w", err)
 	}

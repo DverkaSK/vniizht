@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -58,15 +59,27 @@ func (r *CommentRepo) ListByAnswer(ctx context.Context, answerID int64) ([]*mode
 	return comments, rows.Err()
 }
 
-func (r *CommentRepo) Update(ctx context.Context, c *model.Comment) error {
-	tag, err := r.db.Exec(ctx, queries.CommentUpdate, c.Body, c.ID)
+func (r *CommentRepo) Update(ctx context.Context, c *model.Comment, editorID int64) (time.Time, error) {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("update comment: %w", err)
+		return time.Time{}, fmt.Errorf("begin tx: %w", err)
 	}
-	if tag.RowsAffected() == 0 {
-		return ErrNotFound
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, queries.CommentHistoryInsert, c.ID, editorID, c.Body); err != nil {
+		return time.Time{}, fmt.Errorf("save comment history: %w", err)
 	}
-	return nil
+
+	var updatedAt time.Time
+	err = tx.QueryRow(ctx, queries.CommentUpdate, c.Body, c.ID).Scan(&updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, ErrNotFound
+	}
+	if err != nil {
+		return time.Time{}, fmt.Errorf("update comment: %w", err)
+	}
+
+	return updatedAt, tx.Commit(ctx)
 }
 
 func (r *CommentRepo) Delete(ctx context.Context, id int64) error {

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { MessageSquare, CheckCircle2, Clock } from 'lucide-react'
+import { MessageSquare, CheckCircle2, Clock, Layers } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { formatRelative } from '@/lib/utils'
@@ -11,15 +11,15 @@ interface QuestionCardProps {
 }
 
 const statusLabel: Record<string, string> = {
-  open: 'Открыт',
-  closed: 'Закрыт',
-  duplicate: 'Дубликат',
+  OPEN: 'Открыт',
+  CLOSED: 'Закрыт',
+  DUPLICATE: 'Дубликат',
 }
 
 const statusVariant: Record<string, 'status-open' | 'status-progress' | 'status-closed'> = {
-  open: 'status-open',
-  closed: 'status-closed',
-  duplicate: 'status-closed',
+  OPEN: 'status-open',
+  CLOSED: 'status-closed',
+  DUPLICATE: 'status-closed',
 }
 
 export function QuestionCard({ question, categoryName }: QuestionCardProps) {
@@ -99,8 +99,21 @@ export function QuestionCard({ question, categoryName }: QuestionCardProps) {
                 <MessageSquare className="h-3.5 w-3.5" />
                 {question.answer_count}
               </span>
-              {categoryName && (
-                <span className="hidden sm:block">{categoryName}</span>
+              {categoryName && question.category_id && (
+                <Link
+                  to={`/?category=${question.category_id}`}
+                  className="hidden sm:flex items-center gap-1 hover:text-primary transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Layers className="h-3 w-3" />
+                  {categoryName}
+                </Link>
+              )}
+              {question.specialist_username && (
+                <span className="hidden sm:flex items-center gap-1 text-blue-600">
+                  <span className="text-[10px]">◈</span>
+                  {question.specialist_username}
+                </span>
               )}
               <span className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" />

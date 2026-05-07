@@ -40,21 +40,22 @@ const (
 )
 
 type Question struct {
-	ID             int64
-	AuthorID       int64
-	AuthorUsername string
-	CategoryID     *int64
-	SpecialistID   *int64
-	Title          string
-	Body           string
-	Status         QuestionStatus
-	DuplicateOf    *int64
-	ViewCount      int
-	AnswerCount    int
-	HasVerified    bool
-	Tags           []Tag
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                int64
+	AuthorID          int64
+	AuthorUsername    string
+	CategoryID        *int64
+	SpecialistID      *int64
+	SpecialistUsername *string
+	Title             string
+	Body              string
+	Status            QuestionStatus
+	DuplicateOf       *int64
+	ViewCount         int
+	AnswerCount       int
+	HasVerified       bool
+	Tags              []Tag
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type Comment struct {
@@ -88,20 +89,22 @@ const (
 )
 
 type AnswerHistory struct {
-	ID       int64
-	AnswerID int64
-	EditorID int64
-	Body     string
-	EditedAt time.Time
+	ID             int64
+	AnswerID       int64
+	EditorID       int64
+	EditorUsername string
+	Body           string
+	EditedAt       time.Time
 }
 
 type QuestionHistory struct {
-	ID         int64
-	QuestionID int64
-	EditorID   int64
-	Title      string
-	Body       string
-	EditedAt   time.Time
+	ID             int64
+	QuestionID     int64
+	EditorID       int64
+	EditorUsername string
+	Title          string
+	Body           string
+	EditedAt       time.Time
 }
 
 type Category struct {
@@ -149,6 +152,33 @@ type SearchResult struct {
 	CategoryID    *int64         `json:"category_id,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
 	Rank          float32        `json:"rank"`
+}
+
+type NotificationType string
+
+const (
+	NotifNewAnswer        NotificationType = "NEW_ANSWER"
+	NotifAnswerVerified   NotificationType = "ANSWER_VERIFIED"
+	NotifQuestionAssigned NotificationType = "QUESTION_ASSIGNED"
+	NotifQuestionClosed   NotificationType = "QUESTION_CLOSED"
+	NotifNewComment       NotificationType = "NEW_COMMENT"
+)
+
+type NotificationPayload struct {
+	QuestionID    int64  `json:"question_id,omitempty"`
+	QuestionTitle string `json:"question_title,omitempty"`
+	AnswerID      int64  `json:"answer_id,omitempty"`
+	CommentID     int64  `json:"comment_id,omitempty"`
+	ActorUsername string `json:"actor_username,omitempty"`
+}
+
+type Notification struct {
+	ID        int64
+	UserID    int64
+	Type      NotificationType
+	Payload   NotificationPayload
+	IsRead    bool
+	CreatedAt time.Time
 }
 
 type SearchFilter struct {

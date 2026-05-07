@@ -12,14 +12,14 @@ const (
 		WHERE id = $1`
 
 	CategoryCreate = `
-		INSERT INTO categories (name, description)
-		VALUES ($1, $2)
+		INSERT INTO categories (name, description, specialist_id)
+		VALUES ($1, $2, $3)
 		RETURNING id, created_at`
 
 	CategoryUpdate = `
 		UPDATE categories
-		SET name = $1, description = $2
-		WHERE id = $3`
+		SET name = $1, description = $2, specialist_id = $3
+		WHERE id = $4`
 
 	CategoryDelete = `
 		DELETE FROM categories

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -29,6 +30,15 @@ func (h *QuestionsHandler) List(w http.ResponseWriter, r *http.Request) {
 		Offset: 0,
 	}
 
+	if s := r.URL.Query().Get("assigned_specialist_id"); s != "" {
+		id, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			errs.Write(w, http.StatusBadRequest, errs.QuestionInvalidID)
+			return
+		}
+		f.AssignedSpecialistID = &id
+	}
+
 	if s := r.URL.Query().Get("status"); s != "" {
 		st := model.QuestionStatus(s)
 		switch st {
@@ -47,6 +57,15 @@ func (h *QuestionsHandler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		f.CategoryID = &id
+	}
+
+	if t := r.URL.Query().Get("tag_id"); t != "" {
+		id, err := strconv.ParseInt(t, 10, 64)
+		if err != nil {
+			errs.Write(w, http.StatusBadRequest, errs.TagInvalidID)
+			return
+		}
+		f.TagID = &id
 	}
 
 	if p := r.URL.Query().Get("page"); p != "" {
@@ -152,6 +171,82 @@ func (h *QuestionsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *QuestionsHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	user := middleware.CurrentUser(r)
+
+	id, err := strconv.ParseInt(chi.URLParam(r, "questionID"), 10, 64)
+	if err != nil {
+		errs.Write(w, http.StatusBadRequest, errs.QuestionInvalidID)
+		return
+	}
+
+	if err := h.svc.Delete(r.Context(), id, user); err != nil {
+		mapErr(w, err, errs.QuestionNotFound, errs.QuestionForbidden, "", errs.QuestionUpdateError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *QuestionsHandler) Assign(w http.ResponseWriter, r *http.Request) {
+	user := middleware.CurrentUser(r)
+
+	id, err := strconv.ParseInt(chi.URLParam(r, "questionID"), 10, 64)
+	if err != nil {
+		errs.Write(w, http.StatusBadRequest, errs.QuestionInvalidID)
+		return
+	}
+
+	var req struct {
+		SpecialistID *int64 `json:"specialist_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errs.Write(w, http.StatusBadRequest, errs.InvalidBody)
+		return
+	}
+
+	if err := h.svc.AssignSpecialist(r.Context(), id, req.SpecialistID, user); err != nil {
+		mapErr(w, err, errs.QuestionNotFound, errs.QuestionForbidden, "", errs.QuestionAssignError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *QuestionsHandler) MarkDuplicate(w http.ResponseWriter, r *http.Request) {
+	user := middleware.CurrentUser(r)
+
+	id, err := strconv.ParseInt(chi.URLParam(r, "questionID"), 10, 64)
+	if err != nil {
+		errs.Write(w, http.StatusBadRequest, errs.QuestionInvalidID)
+		return
+	}
+
+	var req struct {
+		DuplicateOf int64 `json:"duplicate_of"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errs.Write(w, http.StatusBadRequest, errs.InvalidBody)
+		return
+	}
+	if req.DuplicateOf == 0 {
+		errs.Write(w, http.StatusBadRequest, errs.QuestionDuplicateInvalid)
+		return
+	}
+
+	if err := h.svc.MarkDuplicate(r.Context(), id, req.DuplicateOf, user); err != nil {
+		switch {
+		case errors.Is(err, errs.ErrInvalid):
+			errs.Write(w, http.StatusBadRequest, errs.QuestionSelfDuplicate)
+		default:
+			mapErr(w, err, errs.QuestionNotFound, errs.QuestionForbidden, errs.QuestionAlreadyClosed, errs.QuestionDuplicateError)
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *QuestionsHandler) Close(w http.ResponseWriter, r *http.Request) {
 	user := middleware.CurrentUser(r)
 
@@ -169,21 +264,52 @@ func (h *QuestionsHandler) Close(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *QuestionsHandler) History(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "questionID"), 10, 64)
+	if err != nil {
+		errs.Write(w, http.StatusBadRequest, errs.QuestionInvalidID)
+		return
+	}
+	history, err := h.svc.GetHistory(r.Context(), id)
+	if err != nil {
+		errs.Write(w, http.StatusInternalServerError, errs.QuestionListError)
+		return
+	}
+	type historyEntry struct {
+		ID             int64     `json:"id"`
+		EditorID       int64     `json:"editor_id"`
+		EditorUsername string    `json:"editor_username"`
+		Title          string    `json:"title"`
+		Body           string    `json:"body"`
+		EditedAt       time.Time `json:"edited_at"`
+	}
+	res := make([]historyEntry, len(history))
+	for i, h := range history {
+		res[i] = historyEntry{
+			ID: h.ID, EditorID: h.EditorID, EditorUsername: h.EditorUsername,
+			Title: h.Title, Body: h.Body, EditedAt: h.EditedAt,
+		}
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
 type questionResponse struct {
-	ID             int64                `json:"id"`
-	AuthorID       int64                `json:"author_id"`
-	AuthorUsername string               `json:"author_username"`
-	CategoryID     *int64               `json:"category_id,omitempty"`
-	SpecialistID   *int64               `json:"specialist_id,omitempty"`
-	Title          string               `json:"title"`
-	Body           string               `json:"body"`
-	Status         model.QuestionStatus `json:"status"`
-	ViewCount      int                  `json:"view_count"`
-	AnswerCount    int                  `json:"answer_count"`
-	HasVerified    bool                 `json:"has_verified"`
-	Tags           []tagResponse        `json:"tags"`
-	CreatedAt      time.Time            `json:"created_at"`
-	UpdatedAt      time.Time            `json:"updated_at"`
+	ID                 int64                `json:"id"`
+	AuthorID           int64                `json:"author_id"`
+	AuthorUsername     string               `json:"author_username"`
+	CategoryID         *int64               `json:"category_id,omitempty"`
+	SpecialistID       *int64               `json:"specialist_id,omitempty"`
+	SpecialistUsername *string              `json:"specialist_username,omitempty"`
+	DuplicateOf        *int64               `json:"duplicate_of,omitempty"`
+	Title              string               `json:"title"`
+	Body               string               `json:"body"`
+	Status             model.QuestionStatus `json:"status"`
+	ViewCount          int                  `json:"view_count"`
+	AnswerCount        int                  `json:"answer_count"`
+	HasVerified        bool                 `json:"has_verified"`
+	Tags               []tagResponse        `json:"tags"`
+	CreatedAt          time.Time            `json:"created_at"`
+	UpdatedAt          time.Time            `json:"updated_at"`
 }
 
 func questionToResponse(q *model.Question) questionResponse {
@@ -192,20 +318,22 @@ func questionToResponse(q *model.Question) questionResponse {
 		tags[i] = tagResponse{ID: t.ID, Name: t.Name}
 	}
 	return questionResponse{
-		ID:             q.ID,
-		AuthorID:       q.AuthorID,
-		AuthorUsername: q.AuthorUsername,
-		CategoryID:     q.CategoryID,
-		SpecialistID:   q.SpecialistID,
-		Title:          q.Title,
-		Body:           q.Body,
-		Status:         q.Status,
-		ViewCount:      q.ViewCount,
-		AnswerCount:    q.AnswerCount,
-		HasVerified:    q.HasVerified,
-		Tags:           tags,
-		CreatedAt:      q.CreatedAt,
-		UpdatedAt:      q.UpdatedAt,
+		ID:                 q.ID,
+		AuthorID:           q.AuthorID,
+		AuthorUsername:     q.AuthorUsername,
+		CategoryID:         q.CategoryID,
+		SpecialistID:       q.SpecialistID,
+		SpecialistUsername: q.SpecialistUsername,
+		DuplicateOf:        q.DuplicateOf,
+		Title:              q.Title,
+		Body:               q.Body,
+		Status:             q.Status,
+		ViewCount:          q.ViewCount,
+		AnswerCount:        q.AnswerCount,
+		HasVerified:        q.HasVerified,
+		Tags:               tags,
+		CreatedAt:          q.CreatedAt,
+		UpdatedAt:          q.UpdatedAt,
 	}
 }
 

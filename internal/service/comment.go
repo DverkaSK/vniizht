@@ -12,10 +12,11 @@ import (
 type CommentService struct {
 	repo    *repository.CommentRepo
 	answers *repository.AnswerRepo
+	notifs  *NotificationService
 }
 
-func NewCommentService(repo *repository.CommentRepo, answers *repository.AnswerRepo) *CommentService {
-	return &CommentService{repo: repo, answers: answers}
+func NewCommentService(repo *repository.CommentRepo, answers *repository.AnswerRepo, notifs *NotificationService) *CommentService {
+	return &CommentService{repo: repo, answers: answers, notifs: notifs}
 }
 
 func (s *CommentService) List(ctx context.Context, answerID int64) ([]*model.Comment, error) {
@@ -23,7 +24,8 @@ func (s *CommentService) List(ctx context.Context, answerID int64) ([]*model.Com
 }
 
 func (s *CommentService) Create(ctx context.Context, answerID int64, user *model.User, body string) (*model.Comment, error) {
-	if _, err := s.answers.GetByID(ctx, answerID); err != nil {
+	answer, err := s.answers.GetByID(ctx, answerID)
+	if err != nil {
 		return nil, err
 	}
 	c := &model.Comment{
@@ -35,22 +37,33 @@ func (s *CommentService) Create(ctx context.Context, answerID int64, user *model
 		return nil, fmt.Errorf("create comment: %w", err)
 	}
 	c.AuthorUsername = user.Username
+
+	if answer.AuthorID != user.ID {
+		s.notifs.Notify(ctx, answer.AuthorID, model.NotifNewComment, model.NotificationPayload{
+			QuestionID:    answer.QuestionID,
+			AnswerID:      answer.ID,
+			CommentID:     c.ID,
+			ActorUsername: user.Username,
+		})
+	}
 	return c, nil
 }
 
-func (s *CommentService) Update(ctx context.Context, id int64, user *model.User, body string) error {
+func (s *CommentService) Update(ctx context.Context, id int64, user *model.User, body string) (*model.Comment, error) {
 	existing, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if existing.AuthorID != user.ID && user.Role != model.RoleAdmin && user.Role != model.RoleSpecialist {
-		return errs.ErrForbidden
+		return nil, errs.ErrForbidden
 	}
 	existing.Body = body
-	if err := s.repo.Update(ctx, existing); err != nil {
-		return fmt.Errorf("update comment: %w", err)
+	updatedAt, err := s.repo.Update(ctx, existing, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("update comment: %w", err)
 	}
-	return nil
+	existing.UpdatedAt = updatedAt
+	return existing, nil
 }
 
 func (s *CommentService) Delete(ctx context.Context, id int64, user *model.User) error {

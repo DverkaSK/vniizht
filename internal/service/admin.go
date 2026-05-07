@@ -50,12 +50,16 @@ func (s *AdminService) ChangeRole(ctx context.Context, id int64, role model.Role
 	return s.users.UpdateRole(ctx, id, role)
 }
 
+func (s *AdminService) SetUserActive(ctx context.Context, id int64, active bool) error {
+	return s.users.SetActive(ctx, id, active)
+}
+
 func (s *AdminService) ListCategories(ctx context.Context) ([]*model.Category, error) {
 	return s.categories.List(ctx)
 }
 
-func (s *AdminService) CreateCategory(ctx context.Context, name, description string) (*model.Category, error) {
-	category := &model.Category{Name: name, Description: description}
+func (s *AdminService) CreateCategory(ctx context.Context, name, description string, specialistID *int64) (*model.Category, error) {
+	category := &model.Category{Name: name, Description: description, SpecialistID: specialistID}
 	if err := s.categories.Create(ctx, category); err != nil {
 		if isDuplicateAdminErr(err) {
 			return nil, errs.ErrConflict
@@ -65,8 +69,8 @@ func (s *AdminService) CreateCategory(ctx context.Context, name, description str
 	return category, nil
 }
 
-func (s *AdminService) UpdateCategory(ctx context.Context, id int64, name, description string) error {
-	category := &model.Category{ID: id, Name: name, Description: description}
+func (s *AdminService) UpdateCategory(ctx context.Context, id int64, name, description string, specialistID *int64) error {
+	category := &model.Category{ID: id, Name: name, Description: description, SpecialistID: specialistID}
 	if err := s.categories.Update(ctx, category); err != nil {
 		if isDuplicateAdminErr(err) {
 			return errs.ErrConflict

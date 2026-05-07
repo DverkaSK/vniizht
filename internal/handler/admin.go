@@ -59,6 +59,32 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, userToResponse(user))
 }
 
+func (h *AdminHandler) SetUserActive(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
+	if err != nil {
+		errs.Write(w, http.StatusBadRequest, errs.UserInvalidID)
+		return
+	}
+
+	var req struct {
+		IsActive bool `json:"is_active"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errs.Write(w, http.StatusBadRequest, errs.InvalidBody)
+		return
+	}
+
+	if err := h.svc.SetUserActive(r.Context(), id, req.IsActive); errors.Is(err, repository.ErrNotFound) {
+		errs.Write(w, http.StatusNotFound, errs.UserNotFound)
+		return
+	} else if err != nil {
+		errs.Write(w, http.StatusInternalServerError, errs.UserUpdateRoleError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *AdminHandler) ChangeRole(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
 	if err != nil {
@@ -100,8 +126,9 @@ func (h *AdminHandler) ListCategories(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
+		Name         string `json:"name"`
+		Description  string `json:"description"`
+		SpecialistID *int64 `json:"specialist_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errs.Write(w, http.StatusBadRequest, errs.InvalidBody)
@@ -112,7 +139,7 @@ func (h *AdminHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	category, err := h.svc.CreateCategory(r.Context(), req.Name, req.Description)
+	category, err := h.svc.CreateCategory(r.Context(), req.Name, req.Description, req.SpecialistID)
 	if err != nil {
 		mapAdminConflict(w, err, errs.CategoryDuplicate, errs.CategoryCreateError)
 		return
@@ -129,8 +156,9 @@ func (h *AdminHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
+		Name         string `json:"name"`
+		Description  string `json:"description"`
+		SpecialistID *int64 `json:"specialist_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errs.Write(w, http.StatusBadRequest, errs.InvalidBody)
@@ -141,7 +169,7 @@ func (h *AdminHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.UpdateCategory(r.Context(), id, req.Name, req.Description); err != nil {
+	if err := h.svc.UpdateCategory(r.Context(), id, req.Name, req.Description, req.SpecialistID); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			errs.Write(w, http.StatusNotFound, errs.CategoryNotFound)
 			return

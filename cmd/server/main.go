@@ -57,11 +57,14 @@ func main() {
 	commentRepo := repository.NewCommentRepo(pool)
 	attachmentRepo := repository.NewAttachmentRepo(pool)
 	searchRepo := repository.NewSearchRepo(pool)
+	notificationRepo := repository.NewNotificationRepo(pool)
 
 	authSvc := service.NewAuthService(userRepo, sessionRepo)
-	questionSvc := service.NewQuestionService(questionRepo)
-	answerSvc := service.NewAnswerService(answerRepo, questionRepo)
-	commentSvc := service.NewCommentService(commentRepo, answerRepo)
+	emailSvc := service.NewEmailService(cfg)
+	notifSvc := service.NewNotificationService(notificationRepo, userRepo, emailSvc)
+	questionSvc := service.NewQuestionService(questionRepo, categoryRepo, notifSvc)
+	answerSvc := service.NewAnswerService(answerRepo, questionRepo, notifSvc)
+	commentSvc := service.NewCommentService(commentRepo, answerRepo, notifSvc)
 	adminSvc := service.NewAdminService(userRepo, categoryRepo, tagRepo)
 	attachmentStorage := service.NewMinioStorage(minioClient, cfg.MinioBucket)
 	attachmentSvc := service.NewAttachmentService(attachmentRepo, attachmentStorage)
@@ -70,15 +73,16 @@ func main() {
 	importSvc := service.NewImportService(questionRepo, answerRepo)
 
 	handlers := &handler.Handlers{
-		Auth:        handler.NewAuthHandler(authSvc),
-		Questions:   handler.NewQuestionsHandler(questionSvc),
-		Answers:     handler.NewAnswersHandler(answerSvc),
-		Comments:    handler.NewCommentsHandler(commentSvc),
-		Attachments: handler.NewAttachmentsHandler(attachmentSvc),
-		Users:       handler.NewUsersHandler(userSvc),
-		Search:      handler.NewSearchHandler(searchSvc),
-		Admin:       handler.NewAdminHandler(adminSvc),
-		Import:      handler.NewImportHandler(importSvc),
+		Auth:          handler.NewAuthHandler(authSvc),
+		Questions:     handler.NewQuestionsHandler(questionSvc),
+		Answers:       handler.NewAnswersHandler(answerSvc),
+		Comments:      handler.NewCommentsHandler(commentSvc),
+		Attachments:   handler.NewAttachmentsHandler(attachmentSvc),
+		Users:         handler.NewUsersHandler(userSvc),
+		Search:        handler.NewSearchHandler(searchSvc),
+		Admin:         handler.NewAdminHandler(adminSvc),
+		Import:        handler.NewImportHandler(importSvc),
+		Notifications: handler.NewNotificationHandler(notifSvc),
 	}
 
 	r := chi.NewRouter()
@@ -91,8 +95,8 @@ func main() {
 	srv := &http.Server{
 		Addr:         cfg.HTTPAddr,
 		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 300 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 

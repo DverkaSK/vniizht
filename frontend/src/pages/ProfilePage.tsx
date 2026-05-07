@@ -8,17 +8,17 @@ import { getUser } from '@/api'
 import type { PublicUser } from '@/types'
 
 const roleLabel: Record<string, string> = {
-  user: 'Пользователь',
-  specialist: 'Специалист АО ВНИИЖТ',
-  admin: 'Администратор',
-  guest: 'Гость',
+  USER: 'Пользователь',
+  SPECIALIST: 'Специалист АО ВНИИЖТ',
+  ADMIN: 'Администратор',
+  GUEST: 'Гость',
 }
 
 const roleVariant: Record<string, 'default' | 'verified' | 'secondary'> = {
-  user: 'secondary',
-  specialist: 'verified',
-  admin: 'default',
-  guest: 'secondary',
+  USER: 'secondary',
+  SPECIALIST: 'verified',
+  ADMIN: 'default',
+  GUEST: 'secondary',
 }
 
 export function ProfilePage() {
@@ -98,7 +98,7 @@ export function ProfilePage() {
             </div>
           </div>
 
-          {user.role === 'SPECIALIST' && (
+          {(user.role === 'SPECIALIST' || user.role === 'ADMIN') && (
             <div className="rounded-lg border border-green-200 bg-green-50/50 p-4">
               <div className="flex items-center gap-1.5 text-green-700 font-medium text-sm mb-1">
                 <CheckCircle2 className="h-4 w-4" />

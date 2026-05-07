@@ -2,18 +2,19 @@ package queries
 
 const (
 	QuestionCreate = `
-		INSERT INTO questions (author_id, category_id, title, body)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO questions (author_id, category_id, specialist_id, title, body)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, status, view_count, created_at, updated_at`
 
 	QuestionGetByID = `
 		SELECT q.id, q.author_id, u.username,
-		       q.category_id, q.specialist_id, q.title, q.body,
-		       q.status, q.duplicate_of, q.view_count, q.created_at, q.updated_at,
+		       q.category_id, q.specialist_id, s.username,
+		       q.title, q.body, q.status, q.duplicate_of, q.view_count, q.created_at, q.updated_at,
 		       (SELECT COUNT(*) FROM answers a WHERE a.question_id = q.id),
 		       (SELECT COALESCE(bool_or(a.is_verified), false) FROM answers a WHERE a.question_id = q.id)
 		FROM questions q
 		JOIN users u ON u.id = q.author_id
+		LEFT JOIN users s ON s.id = q.specialist_id
 		WHERE q.id = $1`
 
 	QuestionIncrementView = `
@@ -21,22 +22,31 @@ const (
 
 	QuestionList = `
 		SELECT q.id, q.author_id, u.username,
-		       q.category_id, q.specialist_id, q.title, q.body,
-		       q.status, q.duplicate_of, q.view_count, q.created_at, q.updated_at,
+		       q.category_id, q.specialist_id, s.username,
+		       q.title, q.body, q.status, q.duplicate_of, q.view_count, q.created_at, q.updated_at,
 		       (SELECT COUNT(*) FROM answers a WHERE a.question_id = q.id),
 		       (SELECT COALESCE(bool_or(a.is_verified), false) FROM answers a WHERE a.question_id = q.id)
 		FROM questions q
 		JOIN users u ON u.id = q.author_id
+		LEFT JOIN users s ON s.id = q.specialist_id
 		WHERE ($1::question_status IS NULL OR q.status = $1)
 		  AND ($2::bigint IS NULL OR q.category_id = $2)
+		  AND ($3::bigint IS NULL OR EXISTS (
+		      SELECT 1 FROM question_tags qt WHERE qt.question_id = q.id AND qt.tag_id = $3
+		  ))
+		  AND ($4::bigint IS NULL OR q.specialist_id = $4)
 		ORDER BY q.created_at DESC
-		LIMIT $3 OFFSET $4`
+		LIMIT $5 OFFSET $6`
 
 	QuestionCount = `
 		SELECT COUNT(*)
-		FROM questions
-		WHERE ($1::question_status IS NULL OR status = $1)
-		  AND ($2::bigint IS NULL OR category_id = $2)`
+		FROM questions q
+		WHERE ($1::question_status IS NULL OR q.status = $1)
+		  AND ($2::bigint IS NULL OR q.category_id = $2)
+		  AND ($3::bigint IS NULL OR EXISTS (
+		      SELECT 1 FROM question_tags qt WHERE qt.question_id = q.id AND qt.tag_id = $3
+		  ))
+		  AND ($4::bigint IS NULL OR q.specialist_id = $4)`
 
 	QuestionUpdate = `
 		UPDATE questions
@@ -72,15 +82,19 @@ const (
 
 	QuestionListRecentByAuthor = `
 		SELECT q.id, q.author_id, u.username,
-		       q.category_id, q.specialist_id, q.title, q.body,
-		       q.status, q.duplicate_of, q.view_count, q.created_at, q.updated_at,
+		       q.category_id, q.specialist_id, s.username,
+		       q.title, q.body, q.status, q.duplicate_of, q.view_count, q.created_at, q.updated_at,
 		       (SELECT COUNT(*) FROM answers a WHERE a.question_id = q.id),
 		       (SELECT COALESCE(bool_or(a.is_verified), false) FROM answers a WHERE a.question_id = q.id)
 		FROM questions q
 		JOIN users u ON u.id = q.author_id
+		LEFT JOIN users s ON s.id = q.specialist_id
 		WHERE q.author_id = $1
 		ORDER BY q.created_at DESC
 		LIMIT $2`
+
+	QuestionAssign = `
+		UPDATE questions SET specialist_id = $2, updated_at = NOW() WHERE id = $1`
 
 	QuestionListForExport = `
 		SELECT q.id, q.title, q.body, a.body
@@ -89,4 +103,18 @@ const (
 		ORDER BY q.id`
 
 	QuestionListTitles = `SELECT title FROM questions`
+
+	QuestionMarkDuplicate = `
+		UPDATE questions
+		SET status = 'DUPLICATE', duplicate_of = $2, updated_at = NOW()
+		WHERE id = $1 AND status = 'OPEN'`
+
+	QuestionDelete = `DELETE FROM questions WHERE id = $1`
+
+	QuestionHistoryGet = `
+		SELECT qh.id, qh.question_id, qh.editor_id, u.username, qh.title, qh.body, qh.edited_at
+		FROM question_history qh
+		JOIN users u ON u.id = qh.editor_id
+		WHERE qh.question_id = $1
+		ORDER BY qh.edited_at DESC`
 )

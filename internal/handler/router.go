@@ -35,7 +35,11 @@ func NewRouter(h *Handlers, auth *service.AuthService) http.Handler {
 		r.Route("/{questionID}", func(r chi.Router) {
 			r.Get("/", h.Questions.Get)
 			r.With(middleware.RequireAuth).Patch("/", h.Questions.Update)
+			r.With(middleware.RequireAuth).Delete("/", h.Questions.Delete)
 			r.With(middleware.RequireAuth).Patch("/close", h.Questions.Close)
+			r.With(middleware.RequireAuth).Patch("/duplicate", h.Questions.MarkDuplicate)
+			r.With(middleware.RequireRole(model.RoleAdmin)).Patch("/assign", h.Questions.Assign)
+			r.Get("/history", h.Questions.History)
 			r.Get("/answers", h.Answers.List)
 			r.With(middleware.RequireAuth).Post("/answers", h.Answers.Create)
 		})
@@ -49,6 +53,7 @@ func NewRouter(h *Handlers, auth *service.AuthService) http.Handler {
 		r.With(middleware.RequireAuth).Post("/vote", h.Answers.CreateVote)
 		r.With(middleware.RequireAuth).Patch("/vote", h.Answers.UpdateVote)
 		r.With(middleware.RequireAuth).Delete("/vote", h.Answers.DeleteVote)
+		r.Get("/history", h.Answers.History)
 		r.Get("/comments", h.Comments.List)
 		r.With(middleware.RequireAuth).Post("/comments", h.Comments.Create)
 	})
@@ -68,6 +73,16 @@ func NewRouter(h *Handlers, auth *service.AuthService) http.Handler {
 	r.With(middleware.RequireAuth).Get("/users/me", h.Users.Me)
 	r.Get("/users/{userID}", h.Users.GetPublic)
 
+	r.Route("/notifications", func(r chi.Router) {
+		r.Use(middleware.RequireAuth)
+		r.Get("/", h.Notifications.List)
+		r.Get("/unread-count", h.Notifications.UnreadCount)
+		r.Patch("/read-all", h.Notifications.MarkAllRead)
+		r.Patch("/{notifID}/read", h.Notifications.MarkRead)
+		r.Get("/preferences", h.Notifications.GetPreferences)
+		r.Put("/preferences", h.Notifications.SavePreferences)
+	})
+
 	adminOnly := middleware.RequireRole(model.RoleAdmin)
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(adminOnly)
@@ -75,6 +90,7 @@ func NewRouter(h *Handlers, auth *service.AuthService) http.Handler {
 			r.Get("/", h.Admin.ListUsers)
 			r.Post("/", h.Admin.CreateUser)
 			r.Patch("/{userID}/role", h.Admin.ChangeRole)
+			r.Patch("/{userID}/active", h.Admin.SetUserActive)
 		})
 		r.Route("/categories", func(r chi.Router) {
 			r.Get("/", h.Admin.ListCategories)

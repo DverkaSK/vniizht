@@ -226,6 +226,34 @@ func (h *AnswersHandler) writeVote(w http.ResponseWriter, r *http.Request, actio
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *AnswersHandler) History(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "answerID"), 10, 64)
+	if err != nil {
+		errs.Write(w, http.StatusBadRequest, errs.AnswerInvalidID)
+		return
+	}
+	history, err := h.svc.GetHistory(r.Context(), id)
+	if err != nil {
+		errs.Write(w, http.StatusInternalServerError, errs.AnswerListError)
+		return
+	}
+	type historyEntry struct {
+		ID             int64     `json:"id"`
+		EditorID       int64     `json:"editor_id"`
+		EditorUsername string    `json:"editor_username"`
+		Body           string    `json:"body"`
+		EditedAt       time.Time `json:"edited_at"`
+	}
+	res := make([]historyEntry, len(history))
+	for i, h := range history {
+		res[i] = historyEntry{
+			ID: h.ID, EditorID: h.EditorID, EditorUsername: h.EditorUsername,
+			Body: h.Body, EditedAt: h.EditedAt,
+		}
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
 type answerResponse struct {
 	ID             int64     `json:"id"`
 	QuestionID     int64     `json:"question_id"`

@@ -7,14 +7,14 @@ import { search } from '@/api'
 import type { SearchResult } from '@/types'
 
 const statusLabel: Record<string, string> = {
-  open: 'Открыт',
-  closed: 'Закрыт',
-  duplicate: 'Дубликат',
+  OPEN: 'Открыт',
+  CLOSED: 'Закрыт',
+  DUPLICATE: 'Дубликат',
 }
 const statusVariant: Record<string, 'status-open' | 'status-progress' | 'status-closed'> = {
-  open: 'status-open',
-  closed: 'status-closed',
-  duplicate: 'status-closed',
+  OPEN: 'status-open',
+  CLOSED: 'status-closed',
+  DUPLICATE: 'status-closed',
 }
 
 export function SearchPage() {

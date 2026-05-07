@@ -167,6 +167,9 @@ func (r *AnswerRepo) CreateVote(ctx context.Context, answerID, userID int64, val
 	if _, err := tx.Exec(ctx, queries.AnswerVoteRecount, answerID); err != nil {
 		return fmt.Errorf("recount answer votes: %w", err)
 	}
+	if _, err := tx.Exec(ctx, queries.UserReputationRecountByAnswer, answerID); err != nil {
+		return fmt.Errorf("recount reputation: %w", err)
+	}
 
 	return tx.Commit(ctx)
 }
@@ -187,6 +190,9 @@ func (r *AnswerRepo) UpdateVote(ctx context.Context, answerID, userID int64, val
 	}
 	if _, err := tx.Exec(ctx, queries.AnswerVoteRecount, answerID); err != nil {
 		return fmt.Errorf("recount answer votes: %w", err)
+	}
+	if _, err := tx.Exec(ctx, queries.UserReputationRecountByAnswer, answerID); err != nil {
+		return fmt.Errorf("recount reputation: %w", err)
 	}
 
 	return tx.Commit(ctx)
@@ -209,8 +215,29 @@ func (r *AnswerRepo) DeleteVote(ctx context.Context, answerID, userID int64) err
 	if _, err := tx.Exec(ctx, queries.AnswerVoteRecount, answerID); err != nil {
 		return fmt.Errorf("recount answer votes: %w", err)
 	}
+	if _, err := tx.Exec(ctx, queries.UserReputationRecountByAnswer, answerID); err != nil {
+		return fmt.Errorf("recount reputation: %w", err)
+	}
 
 	return tx.Commit(ctx)
+}
+
+func (r *AnswerRepo) GetHistory(ctx context.Context, answerID int64) ([]model.AnswerHistory, error) {
+	rows, err := r.db.Query(ctx, queries.AnswerHistoryGet, answerID)
+	if err != nil {
+		return nil, fmt.Errorf("get answer history: %w", err)
+	}
+	defer rows.Close()
+
+	var result []model.AnswerHistory
+	for rows.Next() {
+		var h model.AnswerHistory
+		if err := rows.Scan(&h.ID, &h.AnswerID, &h.EditorID, &h.EditorUsername, &h.Body, &h.EditedAt); err != nil {
+			return nil, err
+		}
+		result = append(result, h)
+	}
+	return result, rows.Err()
 }
 
 func (r *AnswerRepo) GetVote(ctx context.Context, answerID, userID int64) (*model.VoteValue, error) {

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 type Config struct {
@@ -22,8 +23,15 @@ type Config struct {
 	MinioUseSSL    bool
 
 	SessionSecret string
+	CORSOrigin    string
+	AppURL        string
 
-	CORSOrigin string
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUser     string
+	SMTPPassword string
+	SMTPFrom     string
+	SMTPEnabled  bool
 }
 
 func Load() (*Config, error) {
@@ -45,6 +53,14 @@ func Load() (*Config, error) {
 
 		SessionSecret: getEnv("SESSION_SECRET", ""),
 		CORSOrigin:    getEnv("CORS_ORIGIN", "http://localhost:5173"),
+		AppURL:        getEnv("APP_URL", "http://localhost"),
+
+		SMTPHost:     getEnv("SMTP_HOST", "localhost"),
+		SMTPPort:     getEnvInt("SMTP_PORT", 1025),
+		SMTPUser:     getEnv("SMTP_USER", ""),
+		SMTPPassword: getEnv("SMTP_PASSWORD", ""),
+		SMTPFrom:     getEnv("SMTP_FROM", "noreply@elbrus.local"),
+		SMTPEnabled:  getEnv("SMTP_ENABLED", "false") == "true",
 	}
 
 	if cfg.DBPassword == "" {
@@ -67,6 +83,15 @@ func (c *Config) DSN() string {
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+	if v := os.Getenv(key); v != "" {
+		if i, err := strconv.Atoi(v); err == nil {
+			return i
+		}
 	}
 	return fallback
 }
