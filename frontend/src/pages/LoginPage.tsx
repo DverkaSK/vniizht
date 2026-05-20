@@ -32,9 +32,6 @@ export function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center mx-auto mb-3">
-            <span className="text-white font-bold text-xl">Э</span>
-          </div>
           <h1 className="text-xl font-bold text-foreground">ИСС АПК «ЭЛЬБРУС»</h1>
           <p className="text-sm text-muted-foreground mt-1">База знаний технической поддержки</p>
         </div>

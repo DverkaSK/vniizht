@@ -83,10 +83,7 @@ export function Navbar() {
         <div className="flex h-14 items-center gap-4">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 shrink-0">
-            <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
-              <span className="text-white font-bold text-sm">Э</span>
-            </div>
-            <span className="hidden sm:block font-semibold text-foreground">
+            <span className="font-semibold text-foreground">
               ИСС АПК <span className="text-primary">«ЭЛЬБРУС»</span>
             </span>
           </Link>
