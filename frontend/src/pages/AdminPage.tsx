@@ -600,6 +600,7 @@ function DataTab() {
 
   const [periodFrom, setPeriodFrom] = useState(fmt(firstOfMonth))
   const [periodTo, setPeriodTo] = useState(fmt(today))
+  const [periodFormat, setPeriodFormat] = useState<'csv' | 'json'>('csv')
   const [exportingPeriod, setExportingPeriod] = useState(false)
   const [periodError, setPeriodError] = useState<string | null>(null)
 
@@ -628,7 +629,7 @@ function DataTab() {
     setPeriodError(null)
     setExportingPeriod(true)
     try {
-      const res = await api.exportPeriod(periodFrom, periodTo)
+      const res = await api.exportPeriod(periodFrom, periodTo, periodFormat)
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }))
         throw new Error(body.error || res.statusText)
@@ -639,7 +640,7 @@ function DataTab() {
       a.href = url
       const from = periodFrom || 'начало'
       const to = periodTo || 'конец'
-      a.download = `questions_${from}_${to}.csv`
+      a.download = `questions_${from}_${to}.${periodFormat}`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -712,8 +713,7 @@ function DataTab() {
       <div className="rounded-lg border border-border p-6">
         <h2 className="text-lg font-semibold mb-1">Экспорт вопросов за период</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Выгрузите вопросы за выбранный диапазон дат в формате CSV (открывается в Excel).
-          Содержит категорию, теги, автора, статус, количество ответов и верифицированный ответ.
+          Выгрузите вопросы за выбранный диапазон дат. CSV — удобно для Excel, JSON — тот же формат что и полный экспорт.
         </p>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
@@ -734,6 +734,25 @@ function DataTab() {
               className="rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Формат</label>
+            <div className="flex rounded-md border border-border overflow-hidden text-sm h-[34px]">
+              {(['csv', 'json'] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setPeriodFormat(f)}
+                  className={`px-3 font-medium transition-colors ${
+                    periodFormat === f
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-background text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {f.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
           <Button
             variant="outline"
             onClick={handleExportPeriod}
@@ -741,7 +760,7 @@ function DataTab() {
             className="gap-2"
           >
             <Download className="h-4 w-4" />
-            {exportingPeriod ? 'Формируется...' : 'Скачать CSV'}
+            {exportingPeriod ? 'Формируется...' : 'Скачать'}
           </Button>
         </div>
         {periodError && <div className="mt-3"><ErrorBox message={periodError} /></div>}

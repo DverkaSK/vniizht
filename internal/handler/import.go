@@ -43,8 +43,8 @@ func (h *ImportHandler) Import(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]int{"imported": count})
 }
 
-// ExportPeriod отдаёт CSV-файл с вопросами за указанный период.
-// Query-параметры: from и to в формате YYYY-MM-DD (оба необязательны).
+// ExportPeriod отдаёт вопросы за указанный период в формате CSV или JSON.
+// Query-параметры: from, to — YYYY-MM-DD (необязательны); format — "csv" (по умолчанию) или "json".
 func (h *ImportHandler) ExportPeriod(w http.ResponseWriter, r *http.Request) {
 	var from, to *time.Time
 
@@ -66,13 +66,18 @@ func (h *ImportHandler) ExportPeriod(w http.ResponseWriter, r *http.Request) {
 		to = &t
 	}
 
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "csv"
+	}
+
 	rows, err := h.svc.ExportByPeriod(r.Context(), from, to)
 	if err != nil {
 		errs.Write(w, http.StatusInternalServerError, errs.ExportError)
 		return
 	}
 
-	// Имя файла из дат
+	// Базовое имя файла из дат
 	filename := "questions"
 	if from != nil {
 		filename += "_" + from.Format("2006-01-02")
@@ -80,10 +85,31 @@ func (h *ImportHandler) ExportPeriod(w http.ResponseWriter, r *http.Request) {
 	if to != nil {
 		filename += "_" + to.AddDate(0, 0, -1).Format("2006-01-02")
 	}
-	filename += ".csv"
 
+	if format == "json" {
+		entries := make([]service.TrainingEntry, 0, len(rows))
+		for i, row := range rows {
+			positive := ""
+			if row.VerifiedAnswer != nil {
+				positive = *row.VerifiedAnswer
+			}
+			entries = append(entries, service.TrainingEntry{
+				ID:       i,
+				Title:    row.Title,
+				Questions: []string{row.Body},
+				Positive: positive,
+				Original: positive,
+			})
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename+".json"))
+		writeJSON(w, http.StatusOK, map[string]any{"training_data": entries})
+		return
+	}
+
+	// CSV
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename+".csv"))
 
 	// BOM — нужен Excel для корректного отображения UTF-8
 	_, _ = w.Write([]byte("\xEF\xBB\xBF"))

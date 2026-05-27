@@ -236,10 +236,11 @@ export const importData = (trainingData: unknown[]) =>
 export const exportData = () =>
   fetch(BASE + '/admin/export', { credentials: 'include' })
 
-export const exportPeriod = (from: string, to: string) => {
+export const exportPeriod = (from: string, to: string, format: 'csv' | 'json' = 'csv') => {
   const qs = new URLSearchParams()
   if (from) qs.set('from', from)
   if (to) qs.set('to', to)
+  qs.set('format', format)
   return fetch(`${BASE}/admin/export/period?${qs}`, { credentials: 'include' })
 }
 
