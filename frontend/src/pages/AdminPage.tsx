@@ -589,7 +589,6 @@ function TagsTab() {
 function DataTab() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
-  const [exporting, setExporting] = useState(false)
   const [importResult, setImportResult] = useState<{ count: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -650,30 +649,7 @@ function DataTab() {
     }
   }
 
-  const handleExport = async () => {
-    setError(null)
-    setExporting(true)
-    try {
-      const res = await api.exportData()
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: res.statusText }))
-        throw new Error(body.error || res.statusText)
-      }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'training_data.json'
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка экспорта')
-    } finally {
-      setExporting(false)
-    }
-  }
-
-  return (
+return (
     <div className="grid gap-6 max-w-2xl">
       <div className="rounded-lg border border-border p-6">
         <h2 className="text-lg font-semibold mb-1">Импорт вопросов</h2>
@@ -697,17 +673,6 @@ function DataTab() {
             Импортировано записей: <strong>{importResult.count}</strong>
           </div>
         )}
-      </div>
-
-      <div className="rounded-lg border border-border p-6">
-        <h2 className="text-lg font-semibold mb-1">Экспорт вопросов</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Скачайте все вопросы с верифицированными ответами в формате training_data.json.
-        </p>
-        <Button variant="outline" onClick={handleExport} disabled={exporting} className="gap-2">
-          <Download className="h-4 w-4" />
-          {exporting ? 'Формируется...' : 'Скачать training_data.json'}
-        </Button>
       </div>
 
       <div className="rounded-lg border border-border p-6">
