@@ -1,0 +1,93 @@
+
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[russian,english]{babel}
+
+% Core packages
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+\usepackage{tikz-cd}
+\usepackage{multicol}
+\usepackage{pdflscape}
+\usetikzlibrary{arrows.meta}
+
+% Paragraphs
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1\baselineskip}
+
+
+\begin{document}
+\pagestyle{empty}
+
+
+\begin{center}
+\begin{tikzpicture}[
+    scale=0.87,
+    transform shape,
+    box/.style={draw, fill=white, line width=0.7pt, minimum width=7.1cm, minimum height=1.45cm},
+    arrow/.style={-{Latex[length=3mm,width=2.3mm]}, line width=1pt},
+    border/.style={draw, dashed, dash pattern=on 5pt off 5pt, line width=0.6pt},
+    font=\LARGE
+]
+    \draw[border] (0,0) rectangle (10.25,6.9);
+
+    \node[box] (experts) at (4.35,5.65) {Эксперты};
+    \node[box] (users) at (4.35,2.15) {Пользователи};
+    \node[box] (docs) at (13.35,0.45) {Документация};
+
+    \draw[arrow] (8.55,5.65) -- (experts.east);
+    \draw[line width=1pt] (8.55,2.15) -- (8.55,5.65);
+    \draw[arrow] (8.55,2.15) -- (users.east);
+
+    \draw[arrow] (docs.west) -- (4.35,0.45) -- (users.south);
+\end{tikzpicture}
+\end{center}
+
+\clearpage
+\newgeometry{margin=0.35in}
+\begin{landscape}
+\thispagestyle{empty}
+\vspace*{\fill}
+\begin{center}
+\begin{tikzpicture}[
+    scale=0.85,
+    transform shape,
+    box/.style={draw, fill=white, line width=0.8pt, minimum width=6.5cm, minimum height=1.55cm},
+    dashedbox/.style={draw, fill=white, dashed, dash pattern=on 5pt off 5pt, line width=0.8pt, minimum width=6.5cm, minimum height=1.55cm},
+    platform/.style={draw, fill=gray!15, line width=0.8pt, minimum width=18.2cm, minimum height=2cm},
+    arrow/.style={-{Latex[length=4.5mm,width=3.4mm]}, line width=1.35pt},
+    dashedarrow/.style={-{Latex[length=4.5mm,width=3.4mm]}, dashed, dash pattern=on 5pt off 5pt, line width=1.35pt},
+    border/.style={draw, dashed, dash pattern=on 5pt off 5pt, line width=0.6pt},
+    font=\Huge
+]
+    \draw[border] (0,0) rectangle (12.7,9.3);
+    \draw[border] (17.4,0) rectangle (30.1,9.3);
+
+    \node[dashedbox] (experts2) at (5.0,7.9) {Эксперты};
+    \node[platform] (platform2) at (14.0,5.2) {};
+    \node[box, minimum height=1.35cm] (knowledge2) at (14.0,5.2) {База знаний};
+    \node[font=\LARGE] at (21.3,5.9) {платформа};
+    \node[box] (users2) at (5.0,2.6) {Пользователи};
+    \node[box] (docs2) at (15.05,1.15) {Документация};
+    \node[box] (bot2) at (23.8,7.9) {Бот-эксперт};
+
+    \draw[dashedarrow] (9.2,7.9) -- (experts2.east);
+    \draw[dashedarrow] (9.2,7.9) -- (9.2,2.6);
+
+    \draw[arrow] (docs2.west) -- (5.0,1.15) -- (users2.south);
+    \draw[line width=1.35pt] (18.8,2.6) -- (18.8,7.9);
+    \draw[arrow] (18.8,7.9) -- (bot2.west);
+    \draw[arrow] (18.8,2.6) -- (users2.east);
+\end{tikzpicture}
+\end{center}
+\vspace*{\fill}
+\end{landscape}
+\restoregeometry
+
+\end{document}
+
+
+
