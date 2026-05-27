@@ -108,6 +108,7 @@ func NewRouter(h *Handlers, auth *service.AuthService) http.Handler {
 		})
 		r.Post("/import", h.Import.Import)
 		r.Get("/export", h.Import.Export)
+		r.Get("/export/period", h.Import.ExportPeriod)
 	})
 
 	return r

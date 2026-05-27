@@ -593,6 +593,16 @@ function DataTab() {
   const [importResult, setImportResult] = useState<{ count: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Экспорт за период
+  const today = new Date()
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+  const fmt = (d: Date) => d.toISOString().slice(0, 10)
+
+  const [periodFrom, setPeriodFrom] = useState(fmt(firstOfMonth))
+  const [periodTo, setPeriodTo] = useState(fmt(today))
+  const [exportingPeriod, setExportingPeriod] = useState(false)
+  const [periodError, setPeriodError] = useState<string | null>(null)
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -611,6 +621,31 @@ function DataTab() {
     } finally {
       setImporting(false)
       if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const handleExportPeriod = async () => {
+    setPeriodError(null)
+    setExportingPeriod(true)
+    try {
+      const res = await api.exportPeriod(periodFrom, periodTo)
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: res.statusText }))
+        throw new Error(body.error || res.statusText)
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const from = periodFrom || 'начало'
+      const to = periodTo || 'конец'
+      a.download = `questions_${from}_${to}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setPeriodError(err instanceof Error ? err.message : 'Ошибка экспорта')
+    } finally {
+      setExportingPeriod(false)
     }
   }
 
@@ -672,6 +707,44 @@ function DataTab() {
           <Download className="h-4 w-4" />
           {exporting ? 'Формируется...' : 'Скачать training_data.json'}
         </Button>
+      </div>
+
+      <div className="rounded-lg border border-border p-6">
+        <h2 className="text-lg font-semibold mb-1">Экспорт вопросов за период</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Выгрузите вопросы за выбранный диапазон дат в формате CSV (открывается в Excel).
+          Содержит категорию, теги, автора, статус, количество ответов и верифицированный ответ.
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">С</label>
+            <input
+              type="date"
+              value={periodFrom}
+              onChange={(e) => setPeriodFrom(e.target.value)}
+              className="rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">По</label>
+            <input
+              type="date"
+              value={periodTo}
+              onChange={(e) => setPeriodTo(e.target.value)}
+              className="rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleExportPeriod}
+            disabled={exportingPeriod}
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" />
+            {exportingPeriod ? 'Формируется...' : 'Скачать CSV'}
+          </Button>
+        </div>
+        {periodError && <div className="mt-3"><ErrorBox message={periodError} /></div>}
       </div>
 
       {error && <ErrorBox message={error} />}

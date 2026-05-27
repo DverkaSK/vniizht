@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -11,6 +12,22 @@ import (
 	"vniizht/internal/model"
 	"vniizht/internal/repository/queries"
 )
+
+// QuestionExportRow — строка для экспорта вопроса за период в CSV.
+type QuestionExportRow struct {
+	ID             int64
+	CreatedAt      time.Time
+	Title          string
+	Body           string
+	Category       *string
+	Tags           *string
+	Author         string
+	Status         model.QuestionStatus
+	Specialist     *string
+	AnswerCount    int64
+	HasVerified    bool
+	VerifiedAnswer *string
+}
 
 type QuestionFilter struct {
 	Status              *model.QuestionStatus
@@ -255,6 +272,30 @@ func (r *QuestionRepo) ListForExport(ctx context.Context) ([]ExportQuestion, err
 			return nil, err
 		}
 		result = append(result, q)
+	}
+	return result, rows.Err()
+}
+
+// ListForPeriodExport возвращает вопросы за заданный период.
+// Любой из параметров может быть nil — тогда ограничение с этой стороны не применяется.
+func (r *QuestionRepo) ListForPeriodExport(ctx context.Context, from, to *time.Time) ([]*QuestionExportRow, error) {
+	rows, err := r.db.Query(ctx, queries.QuestionListForPeriodExport, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("export questions by period: %w", err)
+	}
+	defer rows.Close()
+
+	var result []*QuestionExportRow
+	for rows.Next() {
+		row := &QuestionExportRow{}
+		if err := rows.Scan(
+			&row.ID, &row.CreatedAt, &row.Title, &row.Body,
+			&row.Category, &row.Tags, &row.Author, &row.Status,
+			&row.Specialist, &row.AnswerCount, &row.HasVerified, &row.VerifiedAnswer,
+		); err != nil {
+			return nil, err
+		}
+		result = append(result, row)
 	}
 	return result, rows.Err()
 }

@@ -104,6 +104,33 @@ const (
 
 	QuestionListTitles = `SELECT title FROM questions`
 
+	// QuestionListForPeriodExport — полный список вопросов за период для экспорта в CSV.
+	// $1 = from (timestamptz, NULL = без ограничения), $2 = to (timestamptz, NULL = без ограничения).
+	QuestionListForPeriodExport = `
+		SELECT
+			q.id,
+			q.created_at,
+			q.title,
+			q.body,
+			c.name,
+			STRING_AGG(DISTINCT t.name, ', ' ORDER BY t.name),
+			u.username,
+			q.status,
+			s.username,
+			(SELECT COUNT(*) FROM answers a WHERE a.question_id = q.id),
+			EXISTS(SELECT 1 FROM answers a WHERE a.question_id = q.id AND a.is_verified = true),
+			(SELECT a.body FROM answers a WHERE a.question_id = q.id AND a.is_verified = true LIMIT 1)
+		FROM questions q
+		JOIN  users u ON u.id = q.author_id
+		LEFT JOIN categories c  ON c.id  = q.category_id
+		LEFT JOIN users      s  ON s.id  = q.specialist_id
+		LEFT JOIN question_tags qt ON qt.question_id = q.id
+		LEFT JOIN tags t           ON t.id = qt.tag_id
+		WHERE ($1::timestamptz IS NULL OR q.created_at >= $1)
+		  AND ($2::timestamptz IS NULL OR q.created_at <  $2)
+		GROUP BY q.id, c.name, u.username, s.username
+		ORDER BY q.created_at`
+
 	QuestionMarkDuplicate = `
 		UPDATE questions
 		SET status = 'DUPLICATE', duplicate_of = $2, updated_at = NOW()

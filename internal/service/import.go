@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"vniizht/internal/model"
 	"vniizht/internal/repository"
@@ -75,6 +76,10 @@ func (s *ImportService) Import(ctx context.Context, entries []TrainingEntry, aut
 		count++
 	}
 	return count, nil
+}
+
+func (s *ImportService) ExportByPeriod(ctx context.Context, from, to *time.Time) ([]*repository.QuestionExportRow, error) {
+	return s.questions.ListForPeriodExport(ctx, from, to)
 }
 
 func (s *ImportService) Export(ctx context.Context) ([]TrainingEntry, error) {
