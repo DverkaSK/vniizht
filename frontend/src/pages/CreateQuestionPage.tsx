@@ -14,9 +14,6 @@ const STATUS_LABEL: Record<string, string> = {
   DUPLICATE: 'Дубликат',
 }
 
-// Источник значения: 'none' — не задано, 'auto' — подобрано системой, 'manual' — задано вручную
-type FieldSource = 'none' | 'auto' | 'manual'
-
 export function CreateQuestionPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
