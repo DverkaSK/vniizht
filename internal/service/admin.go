@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"vniizht/internal/errs"
 	"vniizht/internal/model"
@@ -112,6 +113,78 @@ func (s *AdminService) UpdateTag(ctx context.Context, id int64, name string) err
 
 func (s *AdminService) DeleteTag(ctx context.Context, id int64) error {
 	return s.tags.Delete(ctx, id)
+}
+
+// SuggestResult содержит автоподобранные категорию и теги.
+type SuggestResult struct {
+	CategoryID *int64  `json:"category_id"`
+	TagIDs     []int64 `json:"tag_ids"`
+}
+
+// Suggest возвращает наиболее подходящую категорию и теги по тексту заголовка вопроса.
+// Использует посимвольное совпадение слов (без ML): для категорий берётся лучший результат,
+// для тегов — все совпавшие.
+func (s *AdminService) Suggest(ctx context.Context, query string) (*SuggestResult, error) {
+	categories, err := s.categories.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tags, err := s.tags.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &SuggestResult{TagIDs: []int64{}}
+	words := suggestTokenize(query)
+	if len(words) == 0 {
+		return result, nil
+	}
+
+	// Наилучшая категория по числу совпадений в name + description
+	bestScore := 0
+	for _, c := range categories {
+		score := suggestScore(words, c.Name+" "+c.Description)
+		if score > bestScore {
+			bestScore = score
+			id := c.ID
+			result.CategoryID = &id
+		}
+	}
+
+	// Все теги, у которых есть хотя бы одно совпадение
+	for _, t := range tags {
+		if suggestScore(words, t.Name) > 0 {
+			result.TagIDs = append(result.TagIDs, t.ID)
+		}
+	}
+	return result, nil
+}
+
+// suggestTokenize разбивает строку на слова длиной ≥ 3 символов (строчные).
+func suggestTokenize(s string) []string {
+	s = strings.ToLower(s)
+	words := strings.FieldsFunc(s, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
+	out := make([]string, 0, len(words))
+	for _, w := range words {
+		if len([]rune(w)) >= 3 {
+			out = append(out, w)
+		}
+	}
+	return out
+}
+
+// suggestScore считает сколько слов из words встречается в target (подстрока).
+func suggestScore(words []string, target string) int {
+	target = strings.ToLower(target)
+	score := 0
+	for _, w := range words {
+		if strings.Contains(target, w) {
+			score++
+		}
+	}
+	return score
 }
 
 func isDuplicateAdminErr(err error) bool {

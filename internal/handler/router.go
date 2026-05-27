@@ -32,6 +32,7 @@ func NewRouter(h *Handlers, auth *service.AuthService) http.Handler {
 
 	r.Route("/questions", func(r chi.Router) {
 		r.Get("/", h.Questions.List)
+		r.Get("/suggest", h.Admin.Suggest)
 		r.With(middleware.RequireAuth).Post("/", h.Questions.Create)
 		r.Route("/{questionID}", func(r chi.Router) {
 			r.Get("/", h.Questions.Get)

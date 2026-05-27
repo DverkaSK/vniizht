@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, AlertTriangle, ExternalLink } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, AlertTriangle, ExternalLink, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AttachmentsPanel } from '@/components/attachments/AttachmentsPanel'
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
-import { createQuestion, getCategories, getTags, search } from '@/api'
+import { createQuestion, getCategories, getTags, search, suggestCategoryAndTags } from '@/api'
 import { useAuth } from '@/context/AuthContext'
 import type { Category, Question, SearchResult, Tag } from '@/types'
 
@@ -14,9 +14,13 @@ const STATUS_LABEL: Record<string, string> = {
   DUPLICATE: 'Дубликат',
 }
 
+// Источник значения: 'none' — не задано, 'auto' — подобрано системой, 'manual' — задано вручную
+type FieldSource = 'none' | 'auto' | 'manual'
+
 export function CreateQuestionPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [categoryId, setCategoryId] = useState<number | undefined>()
@@ -29,6 +33,16 @@ export function CreateQuestionPage() {
 
   const [similar, setSimilar] = useState<SearchResult[]>([])
   const [similarDismissed, setSimilarDismissed] = useState(false)
+
+  // Для отображения бейджа «автоподбор» (используем state)
+  const [categoryIsAuto, setCategoryIsAuto] = useState(false)
+  const [tagsIsAuto, setTagsIsAuto] = useState(false)
+
+  // Флаги ручного изменения (ref, чтобы не вызывать повторный рендер
+  // и чтобы читать актуальное значение внутри debounce-замыкания)
+  const categoryManualRef = useRef(false)
+  const tagsManualRef = useRef(false)
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -40,21 +54,40 @@ export function CreateQuestionPage() {
     getTags().then(setTags).catch(() => {})
   }, [])
 
-  // Поиск похожих вопросов при вводе заголовка
+  // Поиск похожих вопросов + автоподбор категории/тегов при вводе заголовка
   useEffect(() => {
     setSimilarDismissed(false)
 
     if (title.trim().length < 8) {
       setSimilar([])
+      // Сбрасываем только автоматически установленные поля
+      if (!categoryManualRef.current) { setCategoryId(undefined); setCategoryIsAuto(false) }
+      if (!tagsManualRef.current) { setSelectedTags([]); setTagsIsAuto(false) }
       return
     }
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await search({ q: title.trim() })
-        const questions = (res.items ?? []).filter((r) => r.type === 'question').slice(0, 5)
+        const [searchRes, suggestRes] = await Promise.all([
+          search({ q: title.trim() }),
+          suggestCategoryAndTags(title.trim()),
+        ])
+
+        const questions = (searchRes.items ?? [])
+          .filter((r) => r.type === 'question')
+          .slice(0, 5)
         setSimilar(questions)
+
+        // Применяем подсказку только если пользователь ещё не менял поле вручную
+        if (!categoryManualRef.current) {
+          setCategoryId(suggestRes.category_id ?? undefined)
+          setCategoryIsAuto(!!suggestRes.category_id)
+        }
+        if (!tagsManualRef.current) {
+          setSelectedTags(suggestRes.tag_ids)
+          setTagsIsAuto(suggestRes.tag_ids.length > 0)
+        }
       } catch {
         setSimilar([])
       }
@@ -66,6 +99,8 @@ export function CreateQuestionPage() {
   }, [title])
 
   const toggleTag = (id: number) => {
+    tagsManualRef.current = true
+    setTagsIsAuto(false)
     setSelectedTags((prev) =>
       prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
     )
@@ -216,12 +251,22 @@ export function CreateQuestionPage() {
         {/* Category */}
         {categories.length > 0 && (
           <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-1.5">
               Категория
+              {categoryIsAuto && (
+                <span className="inline-flex items-center gap-1 text-xs font-normal text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">
+                  <Sparkles className="h-3 w-3" />
+                  автоподбор
+                </span>
+              )}
             </label>
             <select
               value={categoryId ?? ''}
-              onChange={(e) => setCategoryId(e.target.value ? parseInt(e.target.value) : undefined)}
+              onChange={(e) => {
+                categoryManualRef.current = true
+                setCategoryIsAuto(false)
+                setCategoryId(e.target.value ? parseInt(e.target.value) : undefined)
+              }}
               className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Без категории</option>
@@ -235,8 +280,14 @@ export function CreateQuestionPage() {
         {/* Tags */}
         {tags.length > 0 && (
           <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-1.5">
               Теги
+              {tagsIsAuto && (
+                <span className="inline-flex items-center gap-1 text-xs font-normal text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">
+                  <Sparkles className="h-3 w-3" />
+                  автоподбор
+                </span>
+              )}
             </label>
             <div className="flex flex-wrap gap-2">
               {tags.map((tag) => (

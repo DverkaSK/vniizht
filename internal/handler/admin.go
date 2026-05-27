@@ -356,6 +356,16 @@ func tagsToResponse(tags []*model.Tag) []tagResponse {
 	return res
 }
 
+func (h *AdminHandler) Suggest(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	result, err := h.svc.Suggest(r.Context(), q)
+	if err != nil {
+		errs.Write(w, http.StatusInternalServerError, errs.SearchError)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func mapAdminConflict(w http.ResponseWriter, err error, conflictMsg, internalMsg string) {
 	if errors.Is(err, errs.ErrConflict) {
 		errs.Write(w, http.StatusConflict, conflictMsg)

@@ -87,6 +87,11 @@ export const markQuestionDuplicate = (id: number, duplicateOf: number) =>
 export const deleteQuestion = (id: number) =>
   request<void>(`/questions/${id}`, { method: 'DELETE' })
 
+export const suggestCategoryAndTags = (q: string) =>
+  request<{ category_id: number | null; tag_ids: number[] }>(
+    `/questions/suggest?q=${encodeURIComponent(q)}`
+  )
+
 // ── Ответы ────────────────────────────────────────────────────
 
 export const getAnswers = (questionId: number) =>
