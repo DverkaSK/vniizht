@@ -32,17 +32,20 @@
     border/.style={draw, dashed, dash pattern=on 5pt off 5pt, line width=0.6pt},
     font=\LARGE
 ]
-    \draw[border] (0,0) rectangle (10.25,6.9);
+    \draw[border] (0,0) rectangle (12.15,6.9);
 
     \node[box] (experts) at (4.35,5.65) {Эксперты};
     \node[box] (users) at (4.35,2.15) {Пользователи};
-    \node[box] (docs) at (13.35,0.45) {Документация};
+    \node[box] (docs) at (15.15,0.45) {Документация};
 
     \draw[arrow] (8.55,5.65) -- (experts.east);
     \draw[line width=1pt] (8.55,2.15) -- (8.55,5.65);
     \draw[arrow] (8.55,2.15) -- (users.east);
+    \node[font=\normalsize, rotate=90, fill=white, inner sep=2pt] at (8.95,3.9) {Обращения и ответы};
 
     \draw[arrow] (docs.west) -- (4.35,0.45) -- (users.south);
+    \node[font=\normalsize, fill=white, inner sep=2pt] at (8.05,1.1) {Самостоятельный поиск информации};
+    \node[font=\Large] at (6.075,-0.65) {Экспертно-консультационный контур};
 \end{tikzpicture}
 \end{center}
 
@@ -53,7 +56,7 @@
 \vspace*{\fill}
 \begin{center}
 \begin{tikzpicture}[
-    scale=0.85,
+    scale=0.845,
     transform shape,
     box/.style={draw, fill=white, line width=0.8pt, minimum width=6.5cm, minimum height=1.55cm},
     dashedbox/.style={draw, fill=white, dashed, dash pattern=on 5pt off 5pt, line width=0.8pt, minimum width=6.5cm, minimum height=1.55cm},
@@ -63,24 +66,29 @@
     border/.style={draw, dashed, dash pattern=on 5pt off 5pt, line width=0.6pt},
     font=\Huge
 ]
-    \draw[border] (0,0) rectangle (12.7,9.3);
-    \draw[border] (17.4,0) rectangle (30.1,9.3);
+    \draw[border] (0,-1.25) rectangle (12.7,9.3);
+    \draw[border] (17.4,-1.25) rectangle (30.1,9.3);
 
     \node[dashedbox] (experts2) at (5.0,7.9) {Эксперты};
     \node[platform] (platform2) at (14.0,5.2) {};
     \node[box, minimum height=1.35cm] (knowledge2) at (14.0,5.2) {База знаний};
-    \node[font=\LARGE] at (21.3,5.9) {платформа};
+    \node[font=\LARGE] at (21.3,5.2) {платформа};
     \node[box] (users2) at (5.0,2.6) {Пользователи};
-    \node[box] (docs2) at (15.05,1.15) {Документация};
+    \node[box] (docs2) at (15.05,0.1) {Документация};
     \node[box] (bot2) at (23.8,7.9) {Бот-эксперт};
 
     \draw[dashedarrow] (9.2,7.9) -- (experts2.east);
     \draw[dashedarrow] (9.2,7.9) -- (9.2,2.6);
+    \node[font=\large, rotate=90, fill=white, inner sep=2pt] at (9.65,5.2) {Экспертная верификация};
 
-    \draw[arrow] (docs2.west) -- (5.0,1.15) -- (users2.south);
+    \draw[arrow] (docs2.west) -- (5.0,0.1) -- (users2.south);
+    \node[font=\fontsize{14.4}{17}\selectfont, fill=white, inner sep=2pt] at (7.45,-0.55) {Самостоятельный поиск информации};
     \draw[line width=1.35pt] (18.8,2.6) -- (18.8,7.9);
     \draw[arrow] (18.8,7.9) -- (bot2.west);
     \draw[arrow] (18.8,2.6) -- (users2.east);
+    \node[font=\LARGE, fill=white, inner sep=2pt] at (14.7,3.05) {Поиск ответов};
+    \node[font=\LARGE] at (6.35,-1.75) {Экспертно-консультационный контур};
+    \node[font=\LARGE] at (23.75,-1.75) {Контур интеллектуальной поддержки пользователей};
 \end{tikzpicture}
 \end{center}
 \vspace*{\fill}
