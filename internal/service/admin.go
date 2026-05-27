@@ -175,16 +175,58 @@ func suggestTokenize(s string) []string {
 	return out
 }
 
-// suggestScore считает сколько слов из words встречается в target (подстрока).
+// suggestScore считает, сколько слов из words совпадают с любым токеном в target.
+// Совпадение: точная подстрока ИЛИ общий префикс ≥ 4 символов, покрывающий ≥ 70% более
+// короткого слова (обрабатывает русские падежные окончания: «нитки»/«нитках», «окна»/«окнах»).
 func suggestScore(words []string, target string) int {
 	target = strings.ToLower(target)
+	targetTokens := suggestTokenize(target)
 	score := 0
 	for _, w := range words {
-		if strings.Contains(target, w) {
+		if suggestWordMatches(w, target, targetTokens) {
 			score++
 		}
 	}
 	return score
+}
+
+// suggestWordMatches проверяет совпадение одного слова с целевой строкой.
+func suggestWordMatches(word, targetFull string, targetTokens []string) bool {
+	// Быстрый путь: точная подстрока
+	if strings.Contains(targetFull, word) {
+		return true
+	}
+	// Нечёткое совпадение по префиксу с каждым токеном целевой строки
+	wr := []rune(word)
+	for _, tok := range targetTokens {
+		tr := []rune(tok)
+		pl := suggestCommonPrefixLen(wr, tr)
+		if pl < 4 {
+			continue
+		}
+		shorter := len(wr)
+		if len(tr) < shorter {
+			shorter = len(tr)
+		}
+		if float64(pl)/float64(shorter) >= 0.70 {
+			return true
+		}
+	}
+	return false
+}
+
+// suggestCommonPrefixLen возвращает длину общего префикса двух rune-слайсов.
+func suggestCommonPrefixLen(a, b []rune) int {
+	n := len(a)
+	if len(b) < n {
+		n = len(b)
+	}
+	for i := 0; i < n; i++ {
+		if a[i] != b[i] {
+			return i
+		}
+	}
+	return n
 }
 
 func isDuplicateAdminErr(err error) bool {
