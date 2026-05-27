@@ -54,6 +54,10 @@ export function CreateQuestionPage() {
   // Поиск похожих вопросов + автоподбор категории/тегов при вводе заголовка
   useEffect(() => {
     setSimilarDismissed(false)
+    // Сбрасываем флаги ручного изменения при каждой новой печати в заголовке,
+    // чтобы автоподбор снова работал после того, как пользователь что-то менял вручную
+    categoryManualRef.current = false
+    tagsManualRef.current = false
 
     if (title.trim().length < 8) {
       setSimilar([])
